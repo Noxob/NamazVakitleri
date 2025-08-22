@@ -12,13 +12,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.card.MaterialCardView
+import android.location.Geocoder
+import android.location.Address
+import java.util.Locale
 import java.time.Duration
 import java.time.LocalTime
 
 class MainActivity : AppCompatActivity() {
 
     private val locationSender by lazy { LocationSender(this) }
+    private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
             locationSender.sendLastLocation()
+            updateCityFromLocation()
         } else {
             Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
@@ -59,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d("MainActivity", "Location permission granted")
             locationSender.sendLastLocation()
+            updateCityFromLocation()
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
@@ -73,11 +80,9 @@ class MainActivity : AppCompatActivity() {
             maghrib = LocalTime.of(20, 30),
             isha = LocalTime.of(22, 0)
         )
-        val city = "İstanbul"
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
-        findViewById<TextView>(R.id.city_text).text = city
         findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
         findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
         val list = findViewById<LinearLayout>(R.id.prayer_list)
@@ -101,5 +106,32 @@ class MainActivity : AppCompatActivity() {
         "Maghrib" -> R.drawable.ic_maghrib
         "Isha" -> R.drawable.ic_isha
         else -> R.drawable.ic_fajr
+    }
+
+    private fun updateCityFromLocation() {
+        if (!hasLocationPermission()) return
+        fusedClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val geocoder = Geocoder(this, Locale.getDefault())
+                geocoder.getFromLocation(
+                    location.latitude,
+                    location.longitude,
+                    1,
+                    object : Geocoder.GeocodeListener {
+                        override fun onGeocode(results: MutableList<Address>) {
+                            val cityName = results.firstOrNull()?.locality
+                                ?: results.firstOrNull()?.subAdminArea
+                            cityName?.let {
+                                findViewById<TextView>(R.id.city_text).text = it
+                            }
+                        }
+
+                        override fun onError(errorMessage: String?) {
+                            Log.e("MainActivity", "Geocoder error: ${'$'}errorMessage")
+                        }
+                    }
+                )
+            }
+        }
     }
 }

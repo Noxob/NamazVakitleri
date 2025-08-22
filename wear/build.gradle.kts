@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.noxob.namazvakti"
-    compileSdk = 36
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.noxob.namazvakti"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
