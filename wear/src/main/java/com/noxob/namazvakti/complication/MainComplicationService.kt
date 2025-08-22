@@ -17,7 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.tasks.await
+import com.google.android.gms.tasks.Tasks
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -132,9 +132,9 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
         val uri = Uri.parse("wear://*/location")
-        val dataItem = try {
+        val buffer = try {
             withTimeoutOrNull(2000) {
-                dataClient.getDataItem(uri).await()
+                Tasks.await(dataClient.getDataItems(uri))
             }
         } catch (e: CancellationException) {
             throw e
@@ -142,6 +142,8 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             Log.e(TAG, "Error reading location", e)
             null
         }
+
+        val dataItem = buffer?.use { if (it.count > 0) it[0] else null }
         if (dataItem != null) {
             val map = DataMapItem.fromDataItem(dataItem).dataMap
             map.getDouble("lat") to map.getDouble("lng")
