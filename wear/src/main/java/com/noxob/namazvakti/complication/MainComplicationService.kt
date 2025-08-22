@@ -1,6 +1,7 @@
 package com.noxob.namazvakti.complication
 
 import android.net.Uri
+import android.graphics.drawable.Icon
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
@@ -8,6 +9,9 @@ import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
+import androidx.wear.watchface.complications.data.MonochromaticImage
+import androidx.wear.watchface.complications.data.Image
+import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
 import kotlinx.coroutines.Dispatchers
@@ -42,11 +46,18 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         return createComplicationData(text, "Time until $name")
     }
 
-    private fun createComplicationData(text: String, contentDescription: String) =
-        ShortTextComplicationData.Builder(
+    private fun createComplicationData(text: String, contentDescription: String): ComplicationData {
+        val image = MonochromaticImage.Builder(
+            image = Image.Builder(
+                Icon.createWithResource(this, R.drawable.ic_prayer_time)
+            ).build()
+        ).build()
+
+        return ShortTextComplicationData.Builder(
             text = PlainComplicationText.Builder(text).build(),
             contentDescription = PlainComplicationText.Builder(contentDescription).build()
-        ).build()
+        ).setMonochromaticImage(image).build()
+    }
 
     private fun formatDuration(duration: Duration): String {
         val hours = duration.toHours()
