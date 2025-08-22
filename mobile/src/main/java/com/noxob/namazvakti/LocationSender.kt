@@ -16,7 +16,7 @@ class LocationSender(private val context: Context) {
     private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
     private val dataClient = Wearable.getDataClient(context)
 
-    fun sendLastLocation() {
+    fun sendLastLocation(onLocation: (Location) -> Unit = {}) {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.d("LocationSender", "Location permission not granted")
@@ -25,12 +25,14 @@ class LocationSender(private val context: Context) {
         fusedClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 send(location)
+                onLocation(location)
             } else {
                 Log.d("LocationSender", "No last location available; requesting current location")
                 fusedClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                     .addOnSuccessListener { current ->
                         if (current != null) {
                             send(current)
+                            onLocation(current)
                         } else {
                             Log.d("LocationSender", "Current location unavailable")
                         }
