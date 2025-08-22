@@ -2,104 +2,90 @@ package com.noxob.namazvakti
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.card.MaterialCardView
-import java.time.Duration
-import java.time.LocalTime
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.*
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
-
-    private val locationSender by lazy { LocationSender(this) }
+class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-        if (hasLocationPermission()) {
-            Log.d("MainActivity", "Location permission already granted")
-            locationSender.sendLastLocation()
-        } else {
-            Log.d("MainActivity", "Requesting location permission")
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                0
-            )
-        }
-
-        populatePrayerUI()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        requestLocation()
     }
 
-    private fun hasLocationPermission(): Boolean =
-        ActivityCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun requestLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 1001)
+            return
+        }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                launch { resolveCityName(location) }
+            }
+        }
+    }
+
+    private suspend fun resolveCityName(location: Location) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val geocoder = Geocoder(this, Locale.getDefault())
+            geocoder.getFromLocation(location.latitude, location.longitude, 1, object : Geocoder.GeocodeListener {
+                override fun onGeocode(addresses: MutableList<android.location.Address>) {
+                    val city = addresses.firstOrNull()?.locality
+                    Log.d("MainActivity", "City (geocoder): $city")
+                }
+
+                override fun onError(errorMessage: String?) {
+                    Log.e("MainActivity", "Geocode error: $errorMessage")
+                }
+            })
+        } else {
+            val city = fetchCityFromApi(location.latitude, location.longitude)
+            Log.d("MainActivity", "City (api): $city")
+        }
+    }
+
+    private suspend fun fetchCityFromApi(lat: Double, lon: Double): String? = withContext(Dispatchers.IO) {
+        val url = URL("https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=10&addressdetails=1")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.setRequestProperty("User-Agent", "NamazVaktiApp")
+        try {
+            conn.inputStream.use { stream ->
+                val response = stream.bufferedReader().use { it.readText() }
+                val address = JSONObject(response).optJSONObject("address") ?: return@withContext null
+                val city = address.optString("city").takeIf { it.isNotEmpty() }
+                    ?: address.optString("town").takeIf { it.isNotEmpty() }
+                city
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            Log.d("MainActivity", "Location permission granted")
-            locationSender.sendLastLocation()
-        } else {
-            Log.d("MainActivity", "Location permission denied")
+        if (requestCode == 1001 && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            requestLocation()
         }
     }
 
-    private fun populatePrayerUI() {
-        val prayerTimes = PrayerTimes(
-            fajr = LocalTime.of(5, 0),
-            sunrise = LocalTime.of(6, 30),
-            dhuhr = LocalTime.of(13, 0),
-            asr = LocalTime.of(17, 0),
-            maghrib = LocalTime.of(20, 30),
-            isha = LocalTime.of(22, 0)
-        )
-        val city = "İstanbul"
-        val now = LocalTime.now()
-        val (nextName, nextTime) = nextPrayer(now, prayerTimes)
-        val countdown = Duration.between(now, nextTime)
-        findViewById<TextView>(R.id.city_text).text = city
-        findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
-        findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
-        val list = findViewById<LinearLayout>(R.id.prayer_list)
-        list.removeAllViews()
-        prayerTimes.asList().forEach { (name, time) ->
-            val card = layoutInflater.inflate(R.layout.item_prayer_time, list, false) as MaterialCardView
-            card.findViewById<ImageView>(R.id.icon).setImageResource(iconForPrayer(name))
-            card.findViewById<TextView>(R.id.prayer_name).text = name
-            card.findViewById<TextView>(R.id.prayer_time).text = formatTime(time)
-            list.addView(card)
-        }
-        val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
-        findViewById<TextView>(R.id.kerahat_status).text = kerahatText
-    }
-
-    private fun iconForPrayer(name: String): Int = when (name) {
-        "Fajr" -> R.drawable.ic_fajr
-        "Sunrise" -> R.drawable.ic_sunrise
-        "Dhuhr" -> R.drawable.ic_dhuhr
-        "Asr" -> R.drawable.ic_asr
-        "Maghrib" -> R.drawable.ic_maghrib
-        "Isha" -> R.drawable.ic_isha
-        else -> R.drawable.ic_fajr
+    override fun onDestroy() {
+        super.onDestroy()
+        cancel()
     }
 }
+
