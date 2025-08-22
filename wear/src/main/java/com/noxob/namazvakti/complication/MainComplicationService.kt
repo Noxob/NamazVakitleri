@@ -120,7 +120,15 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             times.asr,
             times.maghrib,
             times.isha
-        ).map { it.toJavaInstant().atZone(zone).toLocalTime() }
+        ).map { instant ->
+            val javaInstant = instant.toJavaInstant()
+            val offset = if (zone.id == "Europe/Istanbul") {
+                zone.rules.getStandardOffset(javaInstant)
+            } else {
+                zone.rules.getOffset(javaInstant)
+            }
+            javaInstant.atOffset(offset).toLocalTime()
+        }
     }
 
     private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
