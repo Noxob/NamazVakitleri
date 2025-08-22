@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -26,10 +27,10 @@
 
             <meta-data
                 android:name="androidx.wear.watchface.complications.SUPPORTED_TYPES"
-                android:value="RANGED_VALUE|SHORT_TEXT|MONOCHROMATIC_IMAGE|LONG_TEXT|SMALL_IMAGE" />
+                android:value="RANGED_VALUE,SHORT_TEXT,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE" />
             <meta-data
                 android:name="android.support.wearable.complications.SUPPORTED_TYPES"
-                android:value="RANGED_VALUE|SHORT_TEXT|MONOCHROMATIC_IMAGE|LONG_TEXT|SMALL_IMAGE" />
+                android:value="RANGED_VALUE,SHORT_TEXT,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE" />
             <meta-data
                 android:name="androidx.wear.watchface.complications.UPDATE_PERIOD_SECONDS"
                 android:value="0" />
