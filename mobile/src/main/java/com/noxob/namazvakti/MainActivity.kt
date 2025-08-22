@@ -2,6 +2,7 @@ package com.noxob.namazvakti
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageView
@@ -12,9 +13,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.card.MaterialCardView
+import java.io.IOException
 import java.time.Duration
 import java.time.LocalTime
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,6 +36,7 @@ class MainActivity : AppCompatActivity() {
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
             locationSender.sendLastLocation()
+            updateCityName()
         } else {
             Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
@@ -59,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d("MainActivity", "Location permission granted")
             locationSender.sendLastLocation()
+            updateCityName()
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
@@ -73,11 +79,9 @@ class MainActivity : AppCompatActivity() {
             maghrib = LocalTime.of(20, 30),
             isha = LocalTime.of(22, 0)
         )
-        val city = "İstanbul"
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
-        findViewById<TextView>(R.id.city_text).text = city
         findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
         findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
         val list = findViewById<LinearLayout>(R.id.prayer_list)
@@ -91,6 +95,29 @@ class MainActivity : AppCompatActivity() {
         }
         val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
         findViewById<TextView>(R.id.kerahat_status).text = kerahatText
+    }
+
+    private fun updateCityName() {
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        client.lastLocation.addOnSuccessListener { location ->
+            val name = if (location != null) {
+                val geocoder = Geocoder(this, Locale.getDefault())
+                try {
+                    val result = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                    result?.firstOrNull()?.locality ?: "Bilinmeyen"
+                } catch (_: IOException) {
+                    "Bilinmeyen"
+                }
+            } else {
+                "Bilinmeyen"
+            }
+            findViewById<TextView>(R.id.city_text).text = name
+        }
     }
 
     private fun iconForPrayer(name: String): Int = when (name) {
