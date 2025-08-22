@@ -10,6 +10,8 @@ import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.MonochromaticImage
+import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
+import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
@@ -18,12 +20,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import com.google.android.gms.tasks.Tasks
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.time.ZoneId
 import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 import com.batoulapps.adhan2.CalculationMethod
 import com.batoulapps.adhan2.Coordinates
 import com.batoulapps.adhan2.PrayerTimes
@@ -41,7 +44,8 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
-        return createComplicationData("0m", "Time to next prayer")
+        val now = LocalDateTime.now().plusMinutes(5)
+        return createComplicationData(now, "Time to next prayer")
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
@@ -52,51 +56,51 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             val (today, tomorrow) = fetchPrayerTimes(lat, lng)
             Log.d(TAG, "Fetched prayer times")
             val now = LocalDateTime.now()
-            val (name, duration) = nextPrayer(now, today, tomorrow)
-            val text = formatDuration(duration)
-            Log.d(TAG, "Next prayer $name in $text")
-            createComplicationData(text, "Time until $name")
+            val (name, time) = nextPrayer(now, today, tomorrow)
+            Log.d(TAG, "Next prayer $name at $time")
+            createComplicationData(time, "Time until $name")
         } catch (e: Exception) {
             Log.e(TAG, "Error creating complication", e)
-            createComplicationData("--", "Prayer time unavailable")
+            createComplicationData(LocalDateTime.now(), "Prayer time unavailable")
         }
     }
 
-    private fun createComplicationData(text: String, contentDescription: String): ComplicationData {
+    private fun createComplicationData(targetTime: LocalDateTime, contentDescription: String): ComplicationData {
         val image = MonochromaticImage.Builder(
             Icon.createWithResource(this, R.drawable.ic_prayer_time)
         ).build()
 
-        return ShortTextComplicationData.Builder(
-            text = PlainComplicationText.Builder(text).build(),
-            contentDescription = PlainComplicationText.Builder(contentDescription).build()
-        ).setMonochromaticImage(image).build()
-    }
+        val targetMillis = targetTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val text = TimeDifferenceComplicationText.Builder(
+            referenceTimeMillis = targetMillis,
+            style = TimeDifferenceStyle.SHORT_DUAL_UNIT
+        ).setMinimumUnit(TimeUnit.MINUTES).build()
 
-    private fun formatDuration(duration: Duration): String {
-        val hours = duration.toHours()
-        val minutes = duration.minusHours(hours).toMinutes()
-        return if (hours > 0) {
-            "${hours}h ${minutes}m"
-        } else {
-            "${minutes}m"
-        }
+        val nowMillis = System.currentTimeMillis()
+
+        return ShortTextComplicationData.Builder(
+            text = text,
+            contentDescription = PlainComplicationText.Builder(contentDescription).build()
+        ).setMonochromaticImage(image)
+            .setStartDateTimeMillis(nowMillis)
+            .setEndDateTimeMillis(targetMillis)
+            .build()
     }
 
     private fun nextPrayer(
         now: LocalDateTime,
         today: List<LocalTime>,
         tomorrow: List<LocalTime>
-    ): Pair<String, Duration> {
+    ): Pair<String, LocalDateTime> {
         val names = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
         for (i in today.indices) {
             val time = LocalDateTime.of(now.toLocalDate(), today[i])
             if (time.isAfter(now)) {
-                return names[i] to Duration.between(now, time)
+                return names[i] to time
             }
         }
         val nextDay = LocalDateTime.of(now.toLocalDate().plusDays(1), tomorrow[0])
-        return names[0] to Duration.between(now, nextDay)
+        return names[0] to nextDay
     }
 
     private suspend fun fetchPrayerTimes(
