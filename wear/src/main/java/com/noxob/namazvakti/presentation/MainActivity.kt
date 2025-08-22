@@ -5,7 +5,9 @@
 
 package com.noxob.namazvakti.presentation
 
+import android.content.ComponentName
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -23,7 +25,9 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.tooling.preview.devices.WearDevices
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import com.noxob.namazvakti.R
+import com.noxob.namazvakti.complication.MainComplicationService
 import com.noxob.namazvakti.presentation.theme.NamazVaktiTheme
 
 class MainActivity : ComponentActivity() {
@@ -33,6 +37,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setTheme(android.R.style.Theme_DeviceDefault)
+
+        // Request an update for the complication whenever the app is opened to simplify debugging
+        ComplicationDataSourceUpdateRequester.create(
+            this,
+            ComponentName(this, MainComplicationService::class.java)
+        ).requestUpdateAll().also {
+            Log.d("MainActivity", "Requested complication update")
+        }
 
         setContent {
             WearApp("Android")
