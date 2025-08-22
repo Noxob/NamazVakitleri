@@ -2,6 +2,11 @@ package com.noxob.namazvakti
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.annotation.SuppressLint
+import android.location.Address
+import android.location.Geocoder
+import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageView
@@ -13,12 +18,17 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.card.MaterialCardView
+import com.google.android.gms.location.LocationServices
+import java.io.IOException
 import java.time.Duration
 import java.time.LocalTime
+import java.util.Locale
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private val locationSender by lazy { LocationSender(this) }
+    private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
             locationSender.sendLastLocation()
+            updateCityFromLocation()
         } else {
             Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
@@ -59,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d("MainActivity", "Location permission granted")
             locationSender.sendLastLocation()
+            updateCityFromLocation()
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
@@ -73,11 +85,9 @@ class MainActivity : AppCompatActivity() {
             maghrib = LocalTime.of(20, 30),
             isha = LocalTime.of(22, 0)
         )
-        val city = "İstanbul"
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
-        findViewById<TextView>(R.id.city_text).text = city
         findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
         findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
         val list = findViewById<LinearLayout>(R.id.prayer_list)
@@ -91,6 +101,58 @@ class MainActivity : AppCompatActivity() {
         }
         val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
         findViewById<TextView>(R.id.kerahat_status).text = kerahatText
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun updateCityFromLocation() {
+        if (!hasLocationPermission()) return
+        fusedClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                fetchCity(location)
+            } else {
+                fusedClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener { current ->
+                        if (current != null) {
+                            fetchCity(current)
+                        } else {
+                            Log.d("MainActivity", "Current location unavailable for city lookup")
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun fetchCity(location: Location) {
+        val geocoder = Geocoder(this, Locale.getDefault())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            geocoder.getFromLocation(location.latitude, location.longitude, 1, object : Geocoder.GeocodeListener {
+                override fun onGeocode(addresses: MutableList<Address>) {
+                    val cityName = addresses.firstOrNull()?.locality
+                    if (!cityName.isNullOrBlank()) {
+                        findViewById<TextView>(R.id.city_text).text = cityName
+                    }
+                }
+
+                override fun onError(errorMessage: String?) {
+                    Log.e("MainActivity", "Geocode error: ${'$'}errorMessage")
+                }
+            })
+        } else {
+            Executors.newSingleThreadExecutor().execute {
+                try {
+                    @Suppress("DEPRECATION")
+                    val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                    val cityName = addresses?.firstOrNull()?.locality
+                    if (!cityName.isNullOrBlank()) {
+                        runOnUiThread {
+                            findViewById<TextView>(R.id.city_text).text = cityName
+                        }
+                    }
+                } catch (e: IOException) {
+                    Log.e("MainActivity", "Geocode failed", e)
+                }
+            }
+        }
     }
 
     private fun iconForPrayer(name: String): Int = when (name) {
