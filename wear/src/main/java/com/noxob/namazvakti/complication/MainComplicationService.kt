@@ -10,7 +10,6 @@ import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.MonochromaticImage
-import androidx.wear.watchface.complications.data.Image
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
@@ -48,9 +47,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun createComplicationData(text: String, contentDescription: String): ComplicationData {
         val image = MonochromaticImage.Builder(
-            image = Image.Builder(
-                Icon.createWithResource(this, R.drawable.ic_prayer_time)
-            ).build()
+            Icon.createWithResource(this, R.drawable.ic_prayer_time)
         ).build()
 
         return ShortTextComplicationData.Builder(
