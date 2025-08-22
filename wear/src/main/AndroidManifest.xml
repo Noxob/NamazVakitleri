@@ -51,6 +51,42 @@
                 android:value="OTHER" />
         </service>
         <service
+            android:name=".complication.QiblaComplicationService"
+            android:exported="true"
+            android:icon="@drawable/splash_icon"
+            android:label="@string/qibla_complication_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.watchface.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+
+            <meta-data
+                android:name="androidx.wear.watchface.complications.SUPPORTED_TYPES"
+                android:value="SMALL_IMAGE,MONOCHROMATIC_IMAGE,SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SMALL_IMAGE,MONOCHROMATIC_IMAGE,SHORT_TEXT" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.PROVIDER_ICON"
+                android:resource="@drawable/splash_icon" />
+            <meta-data
+                android:name="android.support.wearable.complications.PROVIDER_ICON"
+                android:resource="@drawable/splash_icon" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.CATEGORIES"
+                android:value="OTHER" />
+            <meta-data
+                android:name="android.support.wearable.complications.CATEGORIES"
+                android:value="OTHER" />
+        </service>
+        <service
             android:name=".tile.MainTileService"
             android:exported="true"
             android:label="@string/tile_label"
