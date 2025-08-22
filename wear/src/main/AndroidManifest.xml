@@ -4,6 +4,9 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -14,18 +17,38 @@
         <service
             android:name=".complication.MainComplicationService"
             android:exported="true"
+            android:icon="@drawable/ic_prayer_time"
             android:label="@string/complication_label"
             android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
             <intent-filter>
+                <action android:name="androidx.wear.watchface.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
                 <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
             </intent-filter>
 
             <meta-data
+                android:name="androidx.wear.watchface.complications.SUPPORTED_TYPES"
+                android:value="RANGED_VALUE,SHORT_TEXT,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE" />
+            <meta-data
                 android:name="android.support.wearable.complications.SUPPORTED_TYPES"
-                android:value="SHORT_TEXT" />
+                android:value="RANGED_VALUE,SHORT_TEXT,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
             <meta-data
                 android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
                 android:value="0" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.PROVIDER_ICON"
+                android:resource="@drawable/ic_prayer_time" />
+            <meta-data
+                android:name="android.support.wearable.complications.PROVIDER_ICON"
+                android:resource="@drawable/ic_prayer_time" />
+            <meta-data
+                android:name="androidx.wear.watchface.complications.CATEGORIES"
+                android:value="OTHER" />
+            <meta-data
+                android:name="android.support.wearable.complications.CATEGORIES"
+                android:value="OTHER" />
         </service>
         <service
             android:name=".tile.MainTileService"
