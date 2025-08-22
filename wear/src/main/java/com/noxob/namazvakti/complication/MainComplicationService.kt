@@ -165,10 +165,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             ComplicationType.RANGED_VALUE -> {
                 val startInstant = start.atZone(ZoneId.systemDefault()).toInstant()
                 val total = (endInstant.toEpochMilli() - startInstant.toEpochMilli()).toFloat()
-                val current = (nowInstant.toEpochMilli() - startInstant.toEpochMilli()).coerceAtLeast(0).toFloat()
+                val current = (nowInstant.toEpochMilli() - startInstant.toEpochMilli())
+                    .coerceIn(0, total.toLong())
+                    .toFloat()
                 RangedValueComplicationData.Builder(current, 0f, total, description)
                     .setText(text)
-                    .setMonochromaticImage(mono)
                     .setValidTimeRange(range)
                     .build()
             }
