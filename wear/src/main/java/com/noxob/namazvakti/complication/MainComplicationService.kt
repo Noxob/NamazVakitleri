@@ -143,11 +143,14 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             null
         }
 
-        val dataItem = buffer?.use { if (it.count > 0) it[0] else null }
-        if (dataItem != null) {
-            val map = DataMapItem.fromDataItem(dataItem).dataMap
-            map.getDouble("lat") to map.getDouble("lng")
-        } else {
+        val location = buffer?.use { buf ->
+            if (buf.count > 0) {
+                val map = DataMapItem.fromDataItem(buf[0]).dataMap
+                map.getDouble("lat") to map.getDouble("lng")
+            } else null
+        }
+
+        location ?: run {
             Log.w(TAG, "No location found; using fallback")
             39.91987 to 32.85427
         }
