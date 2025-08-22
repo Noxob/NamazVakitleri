@@ -7,4 +7,5 @@
     <string name="hello_world">Merhaba dünya,\nHello, %1$s!</string>
     <string name="tile_label">Namaz vakitleri</string>
     <string name="complication_label">Namaz Vakti</string>
+    <string name="qibla_complication_label">Kıble</string>
 </resources>
