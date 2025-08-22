@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.horologist.tiles)
     implementation(libs.androidx.watchface.complications.data.source.ktx)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.adhan2)
     implementation(libs.kotlinx.datetime)
     androidTestImplementation(platform(libs.androidx.compose.bom))

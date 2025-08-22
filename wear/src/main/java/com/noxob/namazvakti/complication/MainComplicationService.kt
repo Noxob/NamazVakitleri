@@ -21,7 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import com.google.android.gms.tasks.Tasks
+import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -51,6 +51,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
+        scheduleComplicationUpdate(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1))
         return try {
             Log.d(TAG, "Complication requested: $request")
             val (lat, lng) = getLocation()
@@ -60,7 +61,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             val now = LocalDateTime.now()
             val (name, time) = nextPrayer(now, today, tomorrow)
             Log.d(TAG, "Next prayer $name at $time")
-            createComplicationData(time, "Time until $name")
+            val data = createComplicationData(time, "Time until $name")
+            val nextMinute = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)
+            val targetMillis = time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            scheduleComplicationUpdate(minOf(nextMinute, targetMillis))
+            data
         } catch (e: Exception) {
             Log.e(TAG, "Error creating complication", e)
             createComplicationData(LocalDateTime.now(), "Prayer time unavailable")
@@ -137,10 +142,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val uri = Uri.parse("wear://*/location")
         val buffer = try {
             withTimeoutOrNull(2000) {
-                Tasks.await(dataClient.getDataItems(uri))
+                dataClient.getDataItems(uri).await()
             }
         } catch (e: CancellationException) {
-            throw e
+            Log.w(TAG, "Location task cancelled", e)
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Error reading location", e)
             null
