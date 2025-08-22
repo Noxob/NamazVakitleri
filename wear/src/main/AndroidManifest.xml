@@ -17,7 +17,7 @@
         <service
             android:name=".complication.MainComplicationService"
             android:exported="true"
-            android:icon="@drawable/ic_prayer_time"
+            android:icon="@drawable/splash_icon"
             android:label="@string/complication_label"
             android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
             <intent-filter>
@@ -39,10 +39,10 @@
                 android:value="0" />
             <meta-data
                 android:name="androidx.wear.watchface.complications.PROVIDER_ICON"
-                android:resource="@drawable/ic_prayer_time" />
+                android:resource="@drawable/splash_icon" />
             <meta-data
                 android:name="android.support.wearable.complications.PROVIDER_ICON"
-                android:resource="@drawable/ic_prayer_time" />
+                android:resource="@drawable/splash_icon" />
             <meta-data
                 android:name="androidx.wear.watchface.complications.CATEGORIES"
                 android:value="OTHER" />
