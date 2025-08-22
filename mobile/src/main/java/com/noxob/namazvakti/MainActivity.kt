@@ -19,6 +19,7 @@ import java.time.LocalTime
 class MainActivity : AppCompatActivity() {
 
     private val locationSender by lazy { LocationSender(this) }
+    private var city: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
-            locationSender.sendLastLocation()
+            locationSender.sendLastLocation(::updateCity)
         } else {
             Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
@@ -58,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d("MainActivity", "Location permission granted")
-            locationSender.sendLastLocation()
+            locationSender.sendLastLocation(::updateCity)
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
@@ -73,7 +74,6 @@ class MainActivity : AppCompatActivity() {
             maghrib = LocalTime.of(20, 30),
             isha = LocalTime.of(22, 0)
         )
-        val city = "İstanbul"
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
@@ -101,5 +101,12 @@ class MainActivity : AppCompatActivity() {
         "Maghrib" -> R.drawable.ic_maghrib
         "Isha" -> R.drawable.ic_isha
         else -> R.drawable.ic_fajr
+    }
+
+    private fun updateCity(name: String) {
+        runOnUiThread {
+            city = name
+            populatePrayerUI()
+        }
     }
 }
