@@ -72,17 +72,18 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val now = LocalDateTime.now()
         val start = now.minusMinutes(30)
         val end = now.plusMinutes(30)
+        val range = TimeRange.always()
         return when (type) {
             ComplicationType.SHORT_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end)
+                createComplicationData(type, "Dhuhr", start, end, range)
             ComplicationType.RANGED_VALUE ->
-                createComplicationData(type, "Dhuhr", start, end)
+                createComplicationData(type, "Dhuhr", start, end, range)
             ComplicationType.MONOCHROMATIC_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end)
+                createComplicationData(type, "Dhuhr", start, end, range)
             ComplicationType.LONG_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end)
+                createComplicationData(type, "Dhuhr", start, end, range)
             ComplicationType.SMALL_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end)
+                createComplicationData(type, "Dhuhr", start, end, range)
             else -> null
         }
     }
@@ -121,7 +122,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         type: ComplicationType,
         prayerName: String,
         start: LocalDateTime,
-        end: LocalDateTime
+        end: LocalDateTime,
+        range: TimeRange = TimeRange.between(
+            LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant(),
+            end.atZone(ZoneId.systemDefault()).toInstant()
+        )
     ): ComplicationData {
         val icon = iconForPrayer(prayerName)
         val mono = MonochromaticImage.Builder(icon).build()
@@ -131,9 +136,8 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val totalMinutes = duration.toMinutes().coerceAtLeast(0)
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        val textStr = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+        val textStr = if (hours > 0) "${hours}s ${minutes}d" else "${minutes}d"
         val text = PlainComplicationText.Builder(textStr).build()
-        val range = TimeRange.between(nowInstant, endInstant)
         val description = PlainComplicationText.Builder("Time until $prayerName").build()
 
         return when (type) {
