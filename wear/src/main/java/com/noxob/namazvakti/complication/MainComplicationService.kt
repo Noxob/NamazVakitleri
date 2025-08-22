@@ -39,6 +39,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.Duration
+import java.time.Instant
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import com.batoulapps.adhan2.CalculationMethod
@@ -72,7 +73,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val now = LocalDateTime.now()
         val start = now.minusMinutes(30)
         val end = now.plusMinutes(30)
-        val range = TimeRange.always()
+        val range = TimeRange.between(Instant.MIN, Instant.MAX)
         return when (type) {
             ComplicationType.SHORT_TEXT ->
                 createComplicationData(type, "Dhuhr", start, end, range)
