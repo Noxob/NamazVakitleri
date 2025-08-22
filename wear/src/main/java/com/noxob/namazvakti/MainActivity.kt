@@ -6,7 +6,8 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,36 +36,28 @@ class MainActivity : ComponentActivity() {
         if (hasLocationPermission()) {
             render()
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                0
-            )
+            requestPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
+
+    private val requestPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                render()
+            } else {
+                Log.d("MainActivity", "Location permission denied")
+            }
+        }
 
     private fun render() {
         setContent { WearApp() }
     }
 
     private fun hasLocationPermission(): Boolean =
-        ActivityCompat.checkSelfPermission(
+        ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            render()
-        } else {
-            Log.d("MainActivity", "Location permission denied")
-        }
-    }
 
     @Composable
     private fun WearApp() {
