@@ -14,7 +14,6 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationType
-import androidx.wear.watchface.complications.data.CountDownTimeReference
 import androidx.wear.watchface.complications.data.MonochromaticImage
 import androidx.wear.watchface.complications.data.MonochromaticImageComplicationData
 import androidx.wear.watchface.complications.data.PlainComplicationText
@@ -24,10 +23,6 @@ import androidx.wear.watchface.complications.data.LongTextComplicationData
 import androidx.wear.watchface.complications.data.SmallImage
 import androidx.wear.watchface.complications.data.SmallImageComplicationData
 import androidx.wear.watchface.complications.data.SmallImageType
-import androidx.wear.watchface.complications.data.LargeImage
-import androidx.wear.watchface.complications.data.LargeImageComplicationData
-import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
-import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
@@ -41,8 +36,9 @@ import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneOffset
 import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.Duration
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import com.batoulapps.adhan2.CalculationMethod
@@ -87,8 +83,6 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                 createComplicationData(type, "Dhuhr", start, end)
             ComplicationType.SMALL_IMAGE ->
                 createComplicationData(type, "Dhuhr", start, end)
-            ComplicationType.LARGE_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end)
             else -> null
         }
     }
@@ -132,11 +126,13 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val icon = iconForPrayer(prayerName)
         val mono = MonochromaticImage.Builder(icon).build()
         val endInstant = end.atZone(ZoneId.systemDefault()).toInstant()
-        val text = TimeDifferenceComplicationText.Builder(
-            TimeDifferenceStyle.SHORT_DUAL_UNIT,
-            CountDownTimeReference(endInstant)
-        ).setMinimumTimeUnit(TimeUnit.MINUTES).build()
         val nowInstant = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()
+        val duration = Duration.between(nowInstant, endInstant)
+        val totalMinutes = duration.toMinutes().coerceAtLeast(0)
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        val textStr = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+        val text = PlainComplicationText.Builder(textStr).build()
         val range = TimeRange.between(nowInstant, endInstant)
         val description = PlainComplicationText.Builder("Time until $prayerName").build()
 
@@ -158,12 +154,6 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             ComplicationType.SMALL_IMAGE -> {
                 val small = SmallImage.Builder(icon, SmallImageType.ICON).build()
                 SmallImageComplicationData.Builder(small, description)
-                    .setValidTimeRange(range)
-                    .build()
-            }
-            ComplicationType.LARGE_IMAGE -> {
-                val large = LargeImage.Builder(icon).build()
-                LargeImageComplicationData.Builder(large, description)
                     .setValidTimeRange(range)
                     .build()
             }
