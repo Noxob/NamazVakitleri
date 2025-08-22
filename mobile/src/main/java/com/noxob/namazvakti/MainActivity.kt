@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
-            locationSender.sendLastLocation()
+            locationSender.sendLastLocation { city -> runOnUiThread { populatePrayerUI(city) } }
         } else {
             Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
@@ -39,9 +39,8 @@ class MainActivity : AppCompatActivity() {
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 0
             )
+            populatePrayerUI("-")
         }
-
-        populatePrayerUI()
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -58,13 +57,13 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d("MainActivity", "Location permission granted")
-            locationSender.sendLastLocation()
+            locationSender.sendLastLocation { city -> runOnUiThread { populatePrayerUI(city) } }
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
     }
 
-    private fun populatePrayerUI() {
+    private fun populatePrayerUI(city: String) {
         val prayerTimes = PrayerTimes(
             fajr = LocalTime.of(5, 0),
             sunrise = LocalTime.of(6, 30),
@@ -73,7 +72,6 @@ class MainActivity : AppCompatActivity() {
             maghrib = LocalTime.of(20, 30),
             isha = LocalTime.of(22, 0)
         )
-        val city = "İstanbul"
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
