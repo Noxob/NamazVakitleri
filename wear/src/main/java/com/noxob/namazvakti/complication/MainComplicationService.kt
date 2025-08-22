@@ -3,6 +3,9 @@ package com.noxob.namazvakti.complication
 import android.net.Uri
 import android.graphics.drawable.Icon
 import android.util.Log
+import android.content.ComponentName
+import android.os.Handler
+import android.os.Looper
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import androidx.wear.watchface.complications.data.ComplicationData
@@ -17,6 +20,7 @@ import androidx.wear.watchface.complications.data.TimeRange
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,6 +39,7 @@ import com.batoulapps.adhan2.PrayerTimes
 import com.batoulapps.adhan2.Madhab
 import com.batoulapps.adhan2.data.DateComponents
 import kotlinx.datetime.toJavaInstant
+import kotlin.math.max
 
 class MainComplicationService : SuspendingComplicationDataSourceService() {
 
@@ -136,6 +141,17 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         ).map { instant ->
             instant.toJavaInstant().atOffset(zoneOffset).toLocalTime()
         }
+    }
+
+    private fun scheduleComplicationUpdate(triggerAtMillis: Long) {
+        val delay = max(0L, triggerAtMillis - System.currentTimeMillis())
+        val requester = ComplicationDataSourceUpdateRequester.create(
+            this,
+            ComponentName(this, MainComplicationService::class.java)
+        )
+        Handler(Looper.getMainLooper()).postDelayed({
+            requester.requestUpdateAll()
+        }, delay)
     }
 
     private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
