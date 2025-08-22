@@ -41,6 +41,7 @@ android {
 
 dependencies {
     implementation(libs.play.services.wearable)
+    implementation(libs.play.services.tasks)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
