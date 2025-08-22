@@ -22,7 +22,8 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
+import java.time.ZoneOffset
+import java.util.TimeZone
 import com.batoulapps.adhan2.CalculationMethod
 import com.batoulapps.adhan2.Coordinates
 import com.batoulapps.adhan2.PrayerTimes
@@ -109,10 +110,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun computeTimes(lat: Double, lng: Double, date: LocalDate): List<LocalTime> {
         val coordinates = Coordinates(lat, lng)
-        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.HANAFI)
+        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.SHAFI)
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
         val times = PrayerTimes(coordinates, components, params)
-        val zone = ZoneId.systemDefault()
+        val offsetMinutes = TimeZone.getDefault().rawOffset / 60000
+        val zoneOffset = ZoneOffset.ofTotalSeconds(offsetMinutes * 60)
         return listOf(
             times.fajr,
             times.sunrise,
@@ -121,13 +123,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             times.maghrib,
             times.isha
         ).map { instant ->
-            val javaInstant = instant.toJavaInstant()
-            val offset = if (zone.id == "Europe/Istanbul") {
-                zone.rules.getStandardOffset(javaInstant)
-            } else {
-                zone.rules.getOffset(javaInstant)
-            }
-            javaInstant.atOffset(offset).toLocalTime()
+            instant.toJavaInstant().atOffset(zoneOffset).toLocalTime()
         }
     }
 
