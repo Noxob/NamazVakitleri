@@ -13,8 +13,10 @@ import androidx.wear.watchface.complications.data.MonochromaticImage
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
@@ -130,17 +132,21 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
         val uri = Uri.parse("wear://*/location")
-        try {
-            val dataItem = dataClient.getDataItem(uri).await()
-            if (dataItem != null) {
-                val map = DataMapItem.fromDataItem(dataItem).dataMap
-                map.getDouble("lat") to map.getDouble("lng")
-            } else {
-                Log.w(TAG, "No location found; using fallback")
-                39.91987 to 32.85427
+        val dataItem = try {
+            withTimeoutOrNull(2000) {
+                dataClient.getDataItem(uri).await()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error reading location", e)
+            null
+        }
+        if (dataItem != null) {
+            val map = DataMapItem.fromDataItem(dataItem).dataMap
+            map.getDouble("lat") to map.getDouble("lng")
+        } else {
+            Log.w(TAG, "No location found; using fallback")
             39.91987 to 32.85427
         }
     }
