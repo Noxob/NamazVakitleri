@@ -28,6 +28,7 @@ import com.batoulapps.adhan2.Coordinates
 import com.batoulapps.adhan2.PrayerTimes
 import com.batoulapps.adhan2.Madhab
 import com.batoulapps.adhan2.data.DateComponents
+import kotlinx.datetime.toJavaInstant
 
 class MainComplicationService : SuspendingComplicationDataSourceService() {
 
@@ -108,7 +109,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun computeTimes(lat: Double, lng: Double, date: LocalDate): List<LocalTime> {
         val coordinates = Coordinates(lat, lng)
-        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.SHAFI)
+        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.HANAFI)
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
         val times = PrayerTimes(coordinates, components, params)
         val zone = ZoneId.systemDefault()
@@ -119,7 +120,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             times.asr,
             times.maghrib,
             times.isha
-        ).map { it.toInstant().atZone(zone).toLocalTime() }
+        ).map { it.toJavaInstant().atZone(zone).toLocalTime() }
     }
 
     private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
