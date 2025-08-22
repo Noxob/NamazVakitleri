@@ -17,13 +17,14 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.material.*
+import com.noxob.namazvakti.presentation.theme.NamazVaktiTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -43,19 +44,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun render() {
-        setContent {
-            var uiState by remember { mutableStateOf<PrayerUiState?>(null) }
-            LaunchedEffect(Unit) {
-                loadPrayerInfo { uiState = it }
-            }
-            if (uiState == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                PrayerTimesScreen(uiState!!)
-            }
-        }
+        setContent { WearApp() }
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -74,6 +63,23 @@ class MainActivity : ComponentActivity() {
             render()
         } else {
             Log.d("MainActivity", "Location permission denied")
+        }
+    }
+
+    @Composable
+    private fun WearApp() {
+        var state by remember { mutableStateOf<PrayerUiState?>(null) }
+        LaunchedEffect(Unit) {
+            loadPrayerInfo { state = it }
+        }
+        NamazVaktiTheme {
+            if (state == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                PrayerTimesScreen(state!!)
+            }
         }
     }
 
@@ -98,16 +104,7 @@ class MainActivity : ComponentActivity() {
                     "Maghrib" to today[4],
                     "Isha" to today[5]
                 )
-                LocationSender(this@MainActivity).sendLastLocation()
-                onReady(
-                    PrayerUiState(
-                        city = city,
-                        times = times,
-                        nextName = name,
-                        nextTime = end,
-                        kerahat = kerahat
-                    )
-                )
+                onReady(PrayerUiState(city, times, name, end, kerahat))
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error loading times", e)
             }
@@ -133,32 +130,24 @@ fun PrayerTimesScreen(state: PrayerUiState) {
         }
     }
     val remaining = Duration.between(now, state.nextTime)
-    val hours = remaining.toHours()
-    val minutes = remaining.minusHours(hours).toMinutes()
-    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
+    val hrs = remaining.toHours()
+    val mins = remaining.minusHours(hrs).toMinutes()
+    val formatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
 
-    MaterialTheme {
+    Scaffold(timeText = { TimeText() }) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = state.city, style = MaterialTheme.typography.headlineSmall)
+            Text(state.city, color = MaterialTheme.colors.primary)
             if (state.kerahat != null) {
-                Text(
-                    text = "Kerahat vaktinde",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text("Kerahat", color = Color.Red)
             }
-            Text(
-                text = "Next ${state.nextName} in ${hours}h ${minutes}m",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            Text("${state.nextName} ${hrs}h ${mins}m")
             state.times.forEach { (name, time) ->
-                Text("$name: ${time.format(timeFormatter)}")
+                Text("$name ${time.format(formatter)}")
             }
         }
     }
