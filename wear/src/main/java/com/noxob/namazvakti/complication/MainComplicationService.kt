@@ -2,6 +2,7 @@ package com.noxob.namazvakti.complication
 
 import android.net.Uri
 import android.graphics.drawable.Icon
+import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
@@ -31,18 +32,31 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private val dataClient by lazy { Wearable.getDataClient(this) }
 
+    companion object {
+        private const val TAG = "MainComplication"
+    }
+
     override fun getPreviewData(type: ComplicationType): ComplicationData? {
         if (type != ComplicationType.SHORT_TEXT) return null
         return createComplicationData("0m", "Time to next prayer")
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
-        val (lat, lng) = getLocation()
-        val (today, tomorrow) = fetchPrayerTimes(lat, lng)
-        val now = LocalDateTime.now()
-        val (name, duration) = nextPrayer(now, today, tomorrow)
-        val text = formatDuration(duration)
-        return createComplicationData(text, "Time until $name")
+        return try {
+            Log.d(TAG, "Complication requested: $request")
+            val (lat, lng) = getLocation()
+            Log.d(TAG, "Using location $lat,$lng")
+            val (today, tomorrow) = fetchPrayerTimes(lat, lng)
+            Log.d(TAG, "Fetched prayer times")
+            val now = LocalDateTime.now()
+            val (name, duration) = nextPrayer(now, today, tomorrow)
+            val text = formatDuration(duration)
+            Log.d(TAG, "Next prayer $name in $text")
+            createComplicationData(text, "Time until $name")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating complication", e)
+            createComplicationData("--", "Prayer time unavailable")
+        }
     }
 
     private fun createComplicationData(text: String, contentDescription: String): ComplicationData {
@@ -91,6 +105,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val url = URL(
             "https://vakit.vercel.app/api/timesForGPS?lat=$lat&lng=$lng&date=$date&days=2&timezoneOffset=$offset&calculationMethod=Turkey&lang=en"
         )
+        Log.d(TAG, "Requesting $url")
         val connection = url.openConnection() as HttpURLConnection
         try {
             val reader = BufferedReader(InputStreamReader(connection.inputStream))
@@ -115,12 +130,18 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun getLocation(): Pair<Double, Double> {
         val uri = Uri.parse("wear://*/location")
-        val dataItem = Tasks.await(dataClient.getDataItem(uri))
-        if (dataItem != null) {
-            val map = DataMapItem.fromDataItem(dataItem).dataMap
-            return map.getDouble("lat") to map.getDouble("lng")
+        return try {
+            val dataItem = Tasks.await(dataClient.getDataItem(uri))
+            if (dataItem != null) {
+                val map = DataMapItem.fromDataItem(dataItem).dataMap
+                map.getDouble("lat") to map.getDouble("lng")
+            } else {
+                Log.w(TAG, "No location found; using fallback")
+                39.91987 to 32.85427
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading location", e)
+            39.91987 to 32.85427
         }
-        // fallback to Ankara coordinates
-        return 39.91987 to 32.85427
     }
 }
