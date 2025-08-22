@@ -77,15 +77,15 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val range = TimeRange.between(Instant.MIN, Instant.MAX)
         return when (type) {
             ComplicationType.SHORT_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.RANGED_VALUE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.MONOCHROMATIC_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.LONG_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.SMALL_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             else -> null
         }
     }
@@ -143,9 +143,8 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         )
     ): ComplicationData {
         val icon = iconForPrayer(prayerName)
-        val monoBuilder = MonochromaticImage.Builder(icon)
-        if (isKerahat) monoBuilder.setTintColor(Color.RED)
-        val mono = monoBuilder.build()
+        if (isKerahat) icon.setTint(Color.RED)
+        val mono = MonochromaticImage.Builder(icon).build()
         val endInstant = end.atZone(ZoneId.systemDefault()).toInstant()
         val nowInstant = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()
         val duration = Duration.between(nowInstant, endInstant)
@@ -177,9 +176,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                     .setValidTimeRange(range)
                     .build()
             ComplicationType.SMALL_IMAGE -> {
-                val smallBuilder = SmallImage.Builder(icon, SmallImageType.ICON)
-                if (isKerahat) smallBuilder.setTintColor(Color.RED)
-                val small = smallBuilder.build()
+                val small = SmallImage.Builder(icon, SmallImageType.ICON).build()
                 SmallImageComplicationData.Builder(small, description)
                     .setValidTimeRange(range)
                     .build()
