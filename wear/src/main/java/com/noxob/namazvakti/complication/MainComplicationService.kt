@@ -56,7 +56,6 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
-        scheduleComplicationUpdate(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1))
         return try {
             Log.d(TAG, "Complication requested: $request")
             val (lat, lng) = getLocation()
@@ -71,6 +70,9 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             val targetMillis = time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             scheduleComplicationUpdate(minOf(nextMinute, targetMillis))
             data
+        } catch (e: CancellationException) {
+            Log.w(TAG, "Complication request cancelled", e)
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error creating complication", e)
             createComplicationData(LocalDateTime.now(), "Prayer time unavailable")
