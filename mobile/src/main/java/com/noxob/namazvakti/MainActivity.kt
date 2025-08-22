@@ -3,6 +3,7 @@ package com.noxob.namazvakti
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -23,8 +24,10 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         if (hasLocationPermission()) {
+            Log.d("MainActivity", "Location permission already granted")
             locationSender.sendLastLocation()
         } else {
+            Log.d("MainActivity", "Requesting location permission")
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
@@ -46,7 +49,10 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Log.d("MainActivity", "Location permission granted")
             locationSender.sendLastLocation()
+        } else {
+            Log.d("MainActivity", "Location permission denied")
         }
     }
 }

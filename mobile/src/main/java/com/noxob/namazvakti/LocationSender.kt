@@ -3,6 +3,7 @@ package com.noxob.namazvakti
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.wearable.PutDataMapRequest
@@ -16,15 +17,19 @@ class LocationSender(private val context: Context) {
     fun sendLastLocation() {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
             ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.d("LocationSender", "Location permission not granted")
             return
         }
         fusedClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
+                Log.d("LocationSender", "Sending location ${'$'}{location.latitude}, ${'$'}{location.longitude}")
                 val request = PutDataMapRequest.create("/location").apply {
                     dataMap.putDouble("lat", location.latitude)
                     dataMap.putDouble("lng", location.longitude)
                 }.asPutDataRequest().setUrgent()
                 dataClient.putDataItem(request)
+            } else {
+                Log.d("LocationSender", "No last location available")
             }
         }
     }
