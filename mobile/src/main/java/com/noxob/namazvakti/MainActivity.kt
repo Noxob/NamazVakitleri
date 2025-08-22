@@ -4,11 +4,17 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.card.MaterialCardView
+import java.time.Duration
+import java.time.LocalTime
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +40,8 @@ class MainActivity : AppCompatActivity() {
                 0
             )
         }
+
+        populatePrayerUI()
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -54,5 +62,44 @@ class MainActivity : AppCompatActivity() {
         } else {
             Log.d("MainActivity", "Location permission denied")
         }
+    }
+
+    private fun populatePrayerUI() {
+        val prayerTimes = PrayerTimes(
+            fajr = LocalTime.of(5, 0),
+            sunrise = LocalTime.of(6, 30),
+            dhuhr = LocalTime.of(13, 0),
+            asr = LocalTime.of(17, 0),
+            maghrib = LocalTime.of(20, 30),
+            isha = LocalTime.of(22, 0)
+        )
+        val city = "İstanbul"
+        val now = LocalTime.now()
+        val (nextName, nextTime) = nextPrayer(now, prayerTimes)
+        val countdown = Duration.between(now, nextTime)
+        findViewById<TextView>(R.id.city_text).text = city
+        findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
+        findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
+        val list = findViewById<LinearLayout>(R.id.prayer_list)
+        list.removeAllViews()
+        prayerTimes.asList().forEach { (name, time) ->
+            val card = layoutInflater.inflate(R.layout.item_prayer_time, list, false) as MaterialCardView
+            card.findViewById<ImageView>(R.id.icon).setImageResource(iconForPrayer(name))
+            card.findViewById<TextView>(R.id.prayer_name).text = name
+            card.findViewById<TextView>(R.id.prayer_time).text = formatTime(time)
+            list.addView(card)
+        }
+        val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
+        findViewById<TextView>(R.id.kerahat_status).text = kerahatText
+    }
+
+    private fun iconForPrayer(name: String): Int = when (name) {
+        "Fajr" -> R.drawable.ic_fajr
+        "Sunrise" -> R.drawable.ic_sunrise
+        "Dhuhr" -> R.drawable.ic_dhuhr
+        "Asr" -> R.drawable.ic_asr
+        "Maghrib" -> R.drawable.ic_maghrib
+        "Isha" -> R.drawable.ic_isha
+        else -> R.drawable.ic_fajr
     }
 }
