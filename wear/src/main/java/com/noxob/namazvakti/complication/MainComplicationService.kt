@@ -3,7 +3,6 @@ package com.noxob.namazvakti.complication
 import android.net.Uri
 import android.graphics.drawable.Icon
 import android.util.Log
-import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import androidx.wear.watchface.complications.data.ComplicationData
@@ -16,6 +15,7 @@ import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -128,10 +128,10 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         return list
     }
 
-    private fun getLocation(): Pair<Double, Double> {
+    private suspend fun getLocation(): Pair<Double, Double> = withContext(Dispatchers.IO) {
         val uri = Uri.parse("wear://*/location")
-        return try {
-            val dataItem = Tasks.await(dataClient.getDataItem(uri))
+        try {
+            val dataItem = dataClient.getDataItem(uri).await()
             if (dataItem != null) {
                 val map = DataMapItem.fromDataItem(dataItem).dataMap
                 map.getDouble("lat") to map.getDouble("lng")
