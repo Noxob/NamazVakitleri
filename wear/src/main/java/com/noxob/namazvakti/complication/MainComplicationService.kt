@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
+import android.graphics.Color
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -76,15 +77,15 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val range = TimeRange.between(Instant.MIN, Instant.MAX)
         return when (type) {
             ComplicationType.SHORT_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.RANGED_VALUE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.MONOCHROMATIC_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.LONG_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             ComplicationType.SMALL_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range)
+                createComplicationData(type, "Dhuhr", start, end, range = range)
             else -> null
         }
     }
@@ -99,9 +100,20 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             val now = LocalDateTime.now()
             val (name, start, end) = prayerWindow(now, yesterday, today, tomorrow)
             Log.d(TAG, "Next prayer $name at $end")
-            val data = createComplicationData(request.complicationType, name, start, end)
+
+            val kerahat = kerahatInterval(now, today)
+            val isKerahat = kerahat != null
+            val (kStart, kEnd) = kerahat ?: (start to end)
+
+            val data = createComplicationData(
+                request.complicationType,
+                name,
+                kStart,
+                kEnd,
+                isKerahat
+            )
             val nextMinute = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)
-            val targetMillis = end.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val targetMillis = kEnd.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             scheduleComplicationUpdate(minOf(nextMinute, targetMillis))
             data
         } catch (e: CancellationException) {
@@ -124,12 +136,14 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         prayerName: String,
         start: LocalDateTime,
         end: LocalDateTime,
+        isKerahat: Boolean = false,
         range: TimeRange = TimeRange.between(
             LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant(),
             end.atZone(ZoneId.systemDefault()).toInstant()
         )
     ): ComplicationData {
         val icon = iconForPrayer(prayerName)
+        if (isKerahat) icon.setTint(Color.RED)
         val mono = MonochromaticImage.Builder(icon).build()
         val endInstant = end.atZone(ZoneId.systemDefault()).toInstant()
         val nowInstant = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()
@@ -139,7 +153,12 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val minutes = totalMinutes % 60
         val textStr = if (hours > 0) "${hours}s ${minutes}d" else "${minutes}d"
         val text = PlainComplicationText.Builder(textStr).build()
-        val description = PlainComplicationText.Builder("Time until $prayerName").build()
+        val descStr = if (isKerahat) {
+            "Kerahat until $prayerName"
+        } else {
+            "Time until $prayerName"
+        }
+        val description = PlainComplicationText.Builder(descStr).build()
 
         return when (type) {
             ComplicationType.SHORT_TEXT ->
@@ -170,6 +189,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                     .toFloat()
                 RangedValueComplicationData.Builder(current, 0f, total, description)
                     .setText(text)
+                    .setMonochromaticImage(mono)
                     .setValidTimeRange(range)
                     .build()
             }
@@ -214,6 +234,26 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val start = LocalDateTime.of(now.toLocalDate(), today.last())
         val end = LocalDateTime.of(now.toLocalDate().plusDays(1), tomorrow[0])
         return Triple(names[0], start, end)
+    }
+
+    private fun kerahatInterval(
+        now: LocalDateTime,
+        today: List<LocalTime>
+    ): Pair<LocalDateTime, LocalDateTime>? {
+        val sunrise = LocalDateTime.of(now.toLocalDate(), today[1])
+        val dhuhr = LocalDateTime.of(now.toLocalDate(), today[2])
+        val maghrib = LocalDateTime.of(now.toLocalDate(), today[4])
+
+        val sunriseEnd = sunrise.plusMinutes(45)
+        val dhuhrStart = dhuhr.minusMinutes(45)
+        val maghribStart = maghrib.minusMinutes(45)
+
+        return when {
+            !now.isBefore(sunrise) && now.isBefore(sunriseEnd) -> sunrise to sunriseEnd
+            !now.isBefore(dhuhrStart) && now.isBefore(dhuhr) -> dhuhrStart to dhuhr
+            !now.isBefore(maghribStart) && now.isBefore(maghrib) -> maghribStart to maghrib
+            else -> null
+        }
     }
 
     private suspend fun fetchPrayerTimes(
