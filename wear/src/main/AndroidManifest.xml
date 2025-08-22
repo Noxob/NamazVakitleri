@@ -17,7 +17,7 @@
         <service
             android:name=".complication.MainComplicationService"
             android:exported="true"
-            android:icon="@drawable/ic_prayer_time"
+            android:icon="@drawable/splash_icon"
             android:label="@string/complication_label"
             android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
             <intent-filter>
