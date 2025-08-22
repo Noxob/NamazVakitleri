@@ -12,6 +12,8 @@ import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.MonochromaticImage
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
+import androidx.wear.watchface.complications.data.CountDownTimeReference
+import androidx.wear.watchface.complications.data.TimeRange
 import com.noxob.namazvakti.R
 import androidx.wear.watchface.complications.datasource.ComplicationRequest
 import androidx.wear.watchface.complications.datasource.SuspendingComplicationDataSourceService
@@ -70,20 +72,20 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             Icon.createWithResource(this, R.drawable.ic_prayer_time)
         ).build()
 
-        val targetMillis = targetTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val targetInstant = targetTime.atZone(ZoneId.systemDefault()).toInstant()
         val text = TimeDifferenceComplicationText.Builder(
-            referenceTimeMillis = targetMillis,
-            style = TimeDifferenceStyle.SHORT_DUAL_UNIT
-        ).setMinimumUnit(TimeUnit.MINUTES).build()
+            TimeDifferenceStyle.SHORT_DUAL_UNIT,
+            CountDownTimeReference(targetInstant)
+        ).setMinimumTimeUnit(TimeUnit.MINUTES).build()
 
-        val nowMillis = System.currentTimeMillis()
+        val nowInstant = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()
+        val range = TimeRange.between(nowInstant, targetInstant)
 
         return ShortTextComplicationData.Builder(
-            text = text,
-            contentDescription = PlainComplicationText.Builder(contentDescription).build()
+            text,
+            PlainComplicationText.Builder(contentDescription).build()
         ).setMonochromaticImage(image)
-            .setStartDateTimeMillis(nowMillis)
-            .setEndDateTimeMillis(targetMillis)
+            .setValidTimeRange(range)
             .build()
     }
 
