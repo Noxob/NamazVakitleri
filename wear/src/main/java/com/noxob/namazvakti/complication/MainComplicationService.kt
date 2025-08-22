@@ -20,6 +20,12 @@ import androidx.wear.watchface.complications.data.MonochromaticImageComplication
 import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
+import androidx.wear.watchface.complications.data.LongTextComplicationData
+import androidx.wear.watchface.complications.data.SmallImage
+import androidx.wear.watchface.complications.data.SmallImageComplicationData
+import androidx.wear.watchface.complications.data.SmallImageType
+import androidx.wear.watchface.complications.data.LargeImage
+import androidx.wear.watchface.complications.data.LargeImageComplicationData
 import androidx.wear.watchface.complications.data.TimeDifferenceComplicationText
 import androidx.wear.watchface.complications.data.TimeDifferenceStyle
 import androidx.wear.watchface.complications.data.TimeRange
@@ -77,6 +83,12 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                 createComplicationData(type, "Dhuhr", start, end)
             ComplicationType.MONOCHROMATIC_IMAGE ->
                 createComplicationData(type, "Dhuhr", start, end)
+            ComplicationType.LONG_TEXT ->
+                createComplicationData(type, "Dhuhr", start, end)
+            ComplicationType.SMALL_IMAGE ->
+                createComplicationData(type, "Dhuhr", start, end)
+            ComplicationType.LARGE_IMAGE ->
+                createComplicationData(type, "Dhuhr", start, end)
             else -> null
         }
     }
@@ -117,7 +129,8 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         start: LocalDateTime,
         end: LocalDateTime
     ): ComplicationData {
-        val icon = MonochromaticImage.Builder(iconForPrayer(prayerName)).build()
+        val icon = iconForPrayer(prayerName)
+        val mono = MonochromaticImage.Builder(icon).build()
         val endInstant = end.atZone(ZoneId.systemDefault()).toInstant()
         val text = TimeDifferenceComplicationText.Builder(
             TimeDifferenceStyle.SHORT_DUAL_UNIT,
@@ -130,26 +143,43 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         return when (type) {
             ComplicationType.SHORT_TEXT ->
                 ShortTextComplicationData.Builder(text, description)
-                    .setMonochromaticImage(icon)
+                    .setMonochromaticImage(mono)
+                    .setValidTimeRange(range)
+                    .build()
+            ComplicationType.LONG_TEXT ->
+                LongTextComplicationData.Builder(text, description)
+                    .setMonochromaticImage(mono)
                     .setValidTimeRange(range)
                     .build()
             ComplicationType.MONOCHROMATIC_IMAGE ->
-                MonochromaticImageComplicationData.Builder(icon, description)
+                MonochromaticImageComplicationData.Builder(mono, description)
                     .setValidTimeRange(range)
                     .build()
+            ComplicationType.SMALL_IMAGE -> {
+                val small = SmallImage.Builder(icon, SmallImageType.ICON).build()
+                SmallImageComplicationData.Builder(small, description)
+                    .setValidTimeRange(range)
+                    .build()
+            }
+            ComplicationType.LARGE_IMAGE -> {
+                val large = LargeImage.Builder(icon).build()
+                LargeImageComplicationData.Builder(large, description)
+                    .setValidTimeRange(range)
+                    .build()
+            }
             ComplicationType.RANGED_VALUE -> {
                 val startInstant = start.atZone(ZoneId.systemDefault()).toInstant()
                 val total = (endInstant.toEpochMilli() - startInstant.toEpochMilli()).toFloat()
                 val current = (nowInstant.toEpochMilli() - startInstant.toEpochMilli()).coerceAtLeast(0).toFloat()
                 RangedValueComplicationData.Builder(current, 0f, total, description)
                     .setText(text)
-                    .setMonochromaticImage(icon)
+                    .setMonochromaticImage(mono)
                     .setValidTimeRange(range)
                     .build()
             }
             else ->
                 ShortTextComplicationData.Builder(text, description)
-                    .setMonochromaticImage(icon)
+                    .setMonochromaticImage(mono)
                     .setValidTimeRange(range)
                     .build()
         }

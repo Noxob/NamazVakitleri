@@ -26,10 +26,10 @@
 
             <meta-data
                 android:name="androidx.wear.watchface.complications.SUPPORTED_TYPES"
-                android:value="SHORT_TEXT" />
+                android:value="SHORT_TEXT,RANGED_VALUE,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE,LARGE_IMAGE" />
             <meta-data
                 android:name="android.support.wearable.complications.SUPPORTED_TYPES"
-                android:value="SHORT_TEXT" />
+                android:value="SHORT_TEXT,RANGED_VALUE,MONOCHROMATIC_IMAGE,LONG_TEXT,SMALL_IMAGE,LARGE_IMAGE" />
             <meta-data
                 android:name="androidx.wear.watchface.complications.UPDATE_PERIOD_SECONDS"
                 android:value="0" />
