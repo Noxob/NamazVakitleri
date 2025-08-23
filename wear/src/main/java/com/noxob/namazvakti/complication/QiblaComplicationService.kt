@@ -70,10 +70,10 @@ class QiblaComplicationService : SuspendingComplicationDataSourceService() {
         return try {
             val (lat, lng) = getLocation()
             val qibla = qiblaDirection(lat, lng)
-            val heading = getHeading()
+            val (heading, calibrated) = getHeading()
             val diff = ((qibla - heading + 360) % 360)
             val aligned = abs(((qibla - heading + 540) % 360) - 180) < 5
-            val icon = buildIcon(diff, aligned)
+            val icon = buildIcon(diff, aligned, calibrated)
             val desc = PlainComplicationText.Builder("Qibla direction").build()
             val range = TimeRange.between(Instant.now(), Instant.now().plusSeconds(1))
             val data = when (request.complicationType) {
@@ -152,10 +152,10 @@ class QiblaComplicationService : SuspendingComplicationDataSourceService() {
         finalLoc
     }
 
-    private suspend fun getHeading(): Float = suspendCancellableCoroutine { cont ->
+    private suspend fun getHeading(): Pair<Float, Boolean> = suspendCancellableCoroutine { cont ->
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         if (sensor == null) {
-            cont.resume(0f)
+            cont.resume(0f to false)
             return@suspendCancellableCoroutine
         }
         val listener = object : SensorEventListener {
@@ -167,8 +167,10 @@ class QiblaComplicationService : SuspendingComplicationDataSourceService() {
                 var azimuth = Math.toDegrees(orient[0].toDouble()).toFloat()
                 azimuth = (azimuth + 360) % 360
                 sensorManager.unregisterListener(this)
-                cont.resume(azimuth)
+                val calibrated = event.accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
+                cont.resume(azimuth to calibrated)
             }
+
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
         sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
@@ -186,11 +188,15 @@ class QiblaComplicationService : SuspendingComplicationDataSourceService() {
         return ((Math.toDegrees(atan2(y, x)) + 360) % 360).toFloat()
     }
 
-    private fun buildIcon(diff: Float, aligned: Boolean): Icon {
+    private fun buildIcon(diff: Float, aligned: Boolean, calibrated: Boolean = true): Icon {
         val size = 48
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val color = if (aligned) Color.GREEN else Color.WHITE
+        val color = when {
+            !calibrated -> Color.RED
+            aligned -> Color.GREEN
+            else -> Color.WHITE
+        }
         val paint = Paint().apply {
             this.color = color
             style = Paint.Style.STROKE
