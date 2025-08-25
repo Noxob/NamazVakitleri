@@ -32,6 +32,7 @@ object PrayerTimeCalculator {
     private const val PREFS = "prayer_cache"
     private const val LAST_LAT = "last_lat"
     private const val LAST_LNG = "last_lng"
+    private const val LAST_CITY = "last_city"
     private const val CACHE_DAY = "cache_day"
     private const val CACHE_LAT = "cache_lat"
     private const val CACHE_LNG = "cache_lng"
@@ -85,6 +86,28 @@ object PrayerTimeCalculator {
         saveLastLocation(prefs, finalLoc.first, finalLoc.second)
         finalLoc
     }
+
+    suspend fun getCityName(context: Context, lat: Double, lng: Double): String =
+        withContext(Dispatchers.IO) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val geocoder = android.location.Geocoder(context)
+
+            val city = try {
+                @Suppress("DEPRECATION")
+                geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()?.let { addr ->
+                    listOfNotNull(addr.locality, addr.subAdminArea, addr.adminArea).firstOrNull()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Geocoder failed", e)
+                null
+            } ?: prefs.getString(LAST_CITY, "") ?: ""
+
+            if (city.isNotEmpty()) {
+                prefs.edit().putString(LAST_CITY, city).apply()
+            }
+
+            city
+        }
 
     suspend fun fetchPrayerTimes(
         context: Context,

@@ -53,15 +53,24 @@ private suspend fun tile(
     context: Context,
 ): TileBuilders.Tile {
     val (lat, lng) = PrayerTimeCalculator.getLocation(context)
+    val city = PrayerTimeCalculator.getCityName(context, lat, lng)
     val (yesterday, today, tomorrow) = PrayerTimeCalculator.fetchPrayerTimes(context, lat, lng)
     val now = LocalDateTime.now()
     val (nextName, _, nextEnd) = PrayerTimeCalculator.prayerWindow(now, yesterday, today, tomorrow)
     val countdown = Duration.between(now, nextEnd)
     val names = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
-    val others = names.zip(today).joinToString(" \n") { "${it.first}: ${formatTime(it.second)}" }
     val kerahat = if (PrayerTimeCalculator.kerahatInterval(now, today) != null) "Kerahat" else "Normal"
 
-    val layout = tileLayout(requestParams, context, nextName, nextEnd.toLocalTime(), countdown, others, kerahat)
+    val layout = tileLayout(
+        requestParams,
+        context,
+        city,
+        nextName,
+        nextEnd.toLocalTime(),
+        countdown,
+        names.zip(today),
+        kerahat
+    )
 
     val singleTileTimeline = TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
@@ -84,48 +93,54 @@ private suspend fun tile(
 private fun tileLayout(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
+    city: String,
     nextName: String,
     nextTime: LocalTime,
     countdown: Duration,
-    others: String,
+    times: List<Pair<String, LocalTime>>,
     kerahat: String,
 ): LayoutElementBuilders.LayoutElement {
     val column = LayoutElementBuilders.Column.Builder()
-        .addContent(
-            Text.Builder(context, "İstanbul")
+    if (city.isNotEmpty()) {
+        column.addContent(
+            Text.Builder(context, city)
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION2)
                 .build()
         )
-        .addContent(
+    }
+    column.addContent(
             Text.Builder(context, "$nextName ${formatTime(nextTime)}")
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_TITLE3)
                 .build()
         )
-        .addContent(
-            Text.Builder(context, "${formatDuration(countdown)}")
-                .setColor(argb(Colors.DEFAULT.onSurface))
-                .setTypography(Typography.TYPOGRAPHY_CAPTION1)
-                .build()
-        )
-        .addContent(
-            Text.Builder(context, others)
-                .setColor(argb(Colors.DEFAULT.onSurface))
-                .setTypography(Typography.TYPOGRAPHY_CAPTION2)
-                .build()
-        )
-        .addContent(
-            Text.Builder(context, kerahat)
+    column.addContent(
+        Text.Builder(context, "${formatDuration(countdown)}")
+            .setColor(argb(Colors.DEFAULT.onSurface))
+            .setTypography(Typography.TYPOGRAPHY_CAPTION1)
+            .build()
+    )
+
+    times.forEach { (name, time) ->
+        column.addContent(
+            Text.Builder(context, "$name ${formatTime(time)}")
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION2)
                 .build()
         )
-        .build()
+    }
+
+    column.addContent(
+        Text.Builder(context, kerahat)
+            .setColor(argb(Colors.DEFAULT.onSurface))
+            .setTypography(Typography.TYPOGRAPHY_CAPTION2)
+            .build()
+    )
 
     return PrimaryLayout.Builder(requestParams.deviceConfiguration)
         .setResponsiveContentInsetEnabled(true)
-        .setContent(column)
+        .setContent(column.build())
         .build()
 }
 
