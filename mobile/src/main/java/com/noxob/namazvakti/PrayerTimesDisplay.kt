@@ -4,7 +4,7 @@ import java.time.Duration
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-data class PrayerTimes(
+data class PrayerTimesDisplay(
     val fajr: LocalTime,
     val sunrise: LocalTime,
     val dhuhr: LocalTime,
@@ -35,10 +35,10 @@ fun formatDuration(duration: Duration): String {
     }
 }
 
-fun nextPrayer(now: LocalTime, times: PrayerTimes): Pair<String, LocalTime> =
+fun nextPrayer(now: LocalTime, times: PrayerTimesDisplay): Pair<String, LocalTime> =
     times.asList().firstOrNull { it.second.isAfter(now) } ?: times.asList().first()
 
-fun isKerahat(now: LocalTime, times: PrayerTimes): Boolean {
+fun isKerahat(now: LocalTime, times: PrayerTimesDisplay): Boolean {
     val morningStart = times.sunrise
     val morningEnd = times.sunrise.plusMinutes(20)
     val eveningStart = times.maghrib.minusMinutes(20)
