@@ -1,0 +1,22 @@
+<resources>
+    <string-array name="calc_method_entries">
+        <item>Muslim World League</item>
+        <item>North America</item>
+        <item>Egyptian</item>
+        <item>Turkey</item>
+    </string-array>
+    <string-array name="calc_method_values">
+        <item>MUSLIM_WORLD_LEAGUE</item>
+        <item>NORTH_AMERICA</item>
+        <item>EGYPTIAN</item>
+        <item>TURKEY</item>
+    </string-array>
+    <string-array name="madhab_entries">
+        <item>Shafi</item>
+        <item>Hanafi</item>
+    </string-array>
+    <string-array name="madhab_values">
+        <item>SHAFI</item>
+        <item>HANAFI</item>
+    </string-array>
+</resources>
