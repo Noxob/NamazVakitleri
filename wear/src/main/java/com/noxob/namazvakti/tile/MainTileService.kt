@@ -56,19 +56,28 @@ private suspend fun tile(
     val city = PrayerTimeCalculator.getCityName(context, lat, lng)
     val (yesterday, today, tomorrow) = PrayerTimeCalculator.fetchPrayerTimes(context, lat, lng)
     val now = LocalDateTime.now()
+    val lang = PrayerTimeCalculator.getLanguage(context)
     val (nextName, _, nextEnd) = PrayerTimeCalculator.prayerWindow(now, yesterday, today, tomorrow)
+    val displayNextName = PrayerTimeCalculator.translatePrayerName(nextName, lang)
     val countdown = Duration.between(now, nextEnd)
-    val names = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
-    val kerahat = if (PrayerTimeCalculator.kerahatInterval(now, today) != null) "Kerahat" else "Normal"
+    val rawNames = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+    val times = rawNames.zip(today).map { (n, t) ->
+        PrayerTimeCalculator.translatePrayerName(n, lang) to t
+    }
+    val kerahat = if (PrayerTimeCalculator.kerahatInterval(now, today) != null) {
+        if (lang == "tr") "Kerahat" else "Kerahat"
+    } else {
+        if (lang == "tr") "Normal" else "Normal"
+    }
 
     val layout = tileLayout(
         requestParams,
         context,
         city,
-        nextName,
+        displayNextName,
         nextEnd.toLocalTime(),
         countdown,
-        names.zip(today),
+        times,
         kerahat
     )
 

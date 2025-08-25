@@ -38,6 +38,9 @@ object PrayerTimeCalculator {
     private const val CACHE_LNG = "cache_lng"
     private const val CACHE_TODAY = "cache_today"
     private const val CACHE_TOMORROW = "cache_tomorrow"
+    private const val LAST_METHOD = "last_method"
+    private const val LAST_MADHAB = "last_madhab"
+    private const val LAST_LANG = "last_lang"
 
     suspend fun getLocation(context: Context): Pair<Double, Double> = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -123,12 +126,34 @@ object PrayerTimeCalculator {
             city
         }
 
+    private suspend fun syncSettings(context: Context, prefs: SharedPreferences) {
+        val dataClient = Wearable.getDataClient(context)
+        val uri = Uri.parse("wear://*/settings")
+        val buffer = try {
+            withTimeoutOrNull(2000) { dataClient.getDataItems(uri).await() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading settings", e)
+            null
+        }
+        buffer?.use { buf ->
+            if (buf.count > 0) {
+                val map = DataMapItem.fromDataItem(buf[0]).dataMap
+                prefs.edit()
+                    .putString(LAST_METHOD, map.getString("calc_method", CalculationMethod.TURKEY.name))
+                    .putString(LAST_MADHAB, map.getString("madhab", Madhab.SHAFI.name))
+                    .putString(LAST_LANG, map.getString("language", "tr"))
+                    .apply()
+            }
+        }
+    }
+
     suspend fun fetchPrayerTimes(
         context: Context,
         lat: Double,
         lng: Double
     ): Triple<List<LocalTime>, List<LocalTime>, List<LocalTime>> = withContext(Dispatchers.Default) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        syncSettings(context, prefs)
         val today = LocalDate.now()
         val yesterday = today.minusDays(1)
 
@@ -142,15 +167,15 @@ object PrayerTimeCalculator {
             if (todayStr != null && tomorrowStr != null) {
                 val todayTimes = parseTimes(todayStr)
                 val tomorrowTimes = parseTimes(tomorrowStr)
-                val yesterdayTimes = computeTimes(lat, lng, yesterday)
+                val yesterdayTimes = computeTimes(lat, lng, yesterday, prefs)
                 return@withContext Triple(yesterdayTimes, todayTimes, tomorrowTimes)
             }
         }
 
         val tomorrow = today.plusDays(1)
-        val yesterdayTimes = computeTimes(lat, lng, yesterday)
-        val todayTimes = computeTimes(lat, lng, today)
-        val tomorrowTimes = computeTimes(lat, lng, tomorrow)
+        val yesterdayTimes = computeTimes(lat, lng, yesterday, prefs)
+        val todayTimes = computeTimes(lat, lng, today, prefs)
+        val tomorrowTimes = computeTimes(lat, lng, tomorrow, prefs)
         prefs.edit()
             .putString(CACHE_DAY, today.toString())
             .putFloat(CACHE_LAT, lat.toFloat())
@@ -204,6 +229,24 @@ object PrayerTimeCalculator {
         }
     }
 
+    fun getLanguage(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getString(LAST_LANG, "tr") ?: "tr"
+    }
+
+    fun translatePrayerName(name: String, lang: String): String = when (lang) {
+        "tr" -> when (name) {
+            "Fajr" -> "İmsak"
+            "Sunrise" -> "Güneş"
+            "Dhuhr" -> "Öğle"
+            "Asr" -> "İkindi"
+            "Maghrib" -> "Akşam"
+            "Isha" -> "Yatsı"
+            else -> name
+        }
+        else -> name
+    }
+
     private fun formatTimes(times: List<LocalTime>) =
         times.joinToString(",") { it.toString() }
 
@@ -222,9 +265,18 @@ object PrayerTimeCalculator {
         return distance < 20_000
     }
 
-    private fun computeTimes(lat: Double, lng: Double, date: LocalDate): List<LocalTime> {
+    private fun computeTimes(
+        lat: Double,
+        lng: Double,
+        date: LocalDate,
+        prefs: SharedPreferences
+    ): List<LocalTime> {
         val coordinates = Coordinates(lat, lng)
-        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.SHAFI)
+        val methodName = prefs.getString(LAST_METHOD, CalculationMethod.TURKEY.name)!!
+        val madhabName = prefs.getString(LAST_MADHAB, Madhab.SHAFI.name)!!
+        val params = CalculationMethod.valueOf(methodName).parameters.copy(
+            madhab = Madhab.valueOf(madhabName)
+        )
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
         val times = PrayerTimes(coordinates, components, params)
         val offsetMinutes = TimeZone.getDefault().rawOffset / 60000

@@ -76,17 +76,18 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val start = now.minusMinutes(30)
         val end = now.plusMinutes(30)
         val range = TimeRange.between(Instant.MIN, Instant.MAX)
+        val lang = PrayerTimeCalculator.getLanguage(this)
         return when (type) {
             ComplicationType.SHORT_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range = range)
+                createComplicationData(type, "Dhuhr", start, end, lang, range = range)
             ComplicationType.RANGED_VALUE ->
-                createComplicationData(type, "Dhuhr", start, end, range = range)
+                createComplicationData(type, "Dhuhr", start, end, lang, range = range)
             ComplicationType.MONOCHROMATIC_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range = range)
+                createComplicationData(type, "Dhuhr", start, end, lang, range = range)
             ComplicationType.LONG_TEXT ->
-                createComplicationData(type, "Dhuhr", start, end, range = range)
+                createComplicationData(type, "Dhuhr", start, end, lang, range = range)
             ComplicationType.SMALL_IMAGE ->
-                createComplicationData(type, "Dhuhr", start, end, range = range)
+                createComplicationData(type, "Dhuhr", start, end, lang, range = range)
             else -> null
         }
     }
@@ -105,12 +106,14 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
             val kerahat = PrayerTimeCalculator.kerahatInterval(now, today)
             val isKerahat = kerahat != null
             val (kStart, kEnd) = kerahat ?: (start to end)
+            val lang = PrayerTimeCalculator.getLanguage(this)
 
             val data = createComplicationData(
                 request.complicationType,
                 name,
                 kStart,
                 kEnd,
+                lang,
                 isKerahat
             )
             val nextMinute = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)
@@ -127,23 +130,26 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                 request.complicationType,
                 "Prayer",
                 now,
-                now.plusMinutes(1)
+                now.plusMinutes(1),
+                PrayerTimeCalculator.getLanguage(this)
             )
         }
     }
 
     private fun createComplicationData(
         type: ComplicationType,
-        prayerName: String,
+        rawPrayerName: String,
         start: LocalDateTime,
         end: LocalDateTime,
+        lang: String,
         isKerahat: Boolean = false,
         range: TimeRange = TimeRange.between(
             LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant(),
             end.atZone(ZoneId.systemDefault()).toInstant()
         )
     ): ComplicationData {
-        val icon = iconForPrayer(prayerName)
+        val displayName = PrayerTimeCalculator.translatePrayerName(rawPrayerName, lang)
+        val icon = iconForPrayer(rawPrayerName)
         if (isKerahat) icon.setTint(Color.RED)
         val mono = MonochromaticImage.Builder(icon).build()
         val endInstant = end.atZone(ZoneId.systemDefault()).toInstant()
@@ -152,12 +158,12 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val totalMinutes = duration.toMinutes().coerceAtLeast(0)
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        val textStr = if (hours > 0) "${hours}s ${minutes}d" else "${minutes}d"
+        val textStr = if (hours > 0) "${'$'}{hours}s ${'$'}{minutes}d" else "${'$'}{minutes}d"
         val text = PlainComplicationText.Builder(textStr).build()
         val descStr = if (isKerahat) {
-            "Kerahat until $prayerName"
+            if (lang == "tr") "Kerahat ${'$'}displayName'e kadar" else "Kerahat until ${'$'}displayName"
         } else {
-            "Time until $prayerName"
+            if (lang == "tr") "${'$'}displayName'e kadar" else "Time until ${'$'}displayName"
         }
         val description = PlainComplicationText.Builder(descStr).build()
 
