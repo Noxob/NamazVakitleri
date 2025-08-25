@@ -9,6 +9,8 @@ import android.util.Log
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.MessageClient
+import com.google.android.gms.wearable.NodeClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,6 +43,8 @@ object PrayerTimeCalculator {
     private const val LAST_METHOD = "last_method"
     private const val LAST_MADHAB = "last_madhab"
     private const val LAST_LANG = "last_lang"
+    private const val LAST_SYNC = "last_settings_sync"
+    private const val SYNC_INTERVAL_MS = 30_000L
 
     suspend fun getLocation(context: Context): Pair<Double, Double> = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -127,6 +131,25 @@ object PrayerTimeCalculator {
         }
 
     private suspend fun syncSettings(context: Context, prefs: SharedPreferences) {
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong(LAST_SYNC, 0L)
+        if (now - last > SYNC_INTERVAL_MS) {
+            try {
+                val nodeClient: NodeClient = Wearable.getNodeClient(context)
+                val messageClient: MessageClient = Wearable.getMessageClient(context)
+                val nodes = nodeClient.connectedNodes.await()
+                for (node in nodes) {
+                    try {
+                        messageClient.sendMessage(node.id, "/request_settings", ByteArray(0)).await()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed requesting settings", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error requesting settings", e)
+            }
+        }
+
         val dataClient = Wearable.getDataClient(context)
         val uri = Uri.parse("wear://*/settings")
         val buffer = try {
@@ -142,6 +165,7 @@ object PrayerTimeCalculator {
                     .putString(LAST_METHOD, map.getString("calc_method", CalculationMethod.TURKEY.name))
                     .putString(LAST_MADHAB, map.getString("madhab", Madhab.SHAFI.name))
                     .putString(LAST_LANG, map.getString("language", "tr"))
+                    .putLong(LAST_SYNC, now)
                     .apply()
             }
         }
