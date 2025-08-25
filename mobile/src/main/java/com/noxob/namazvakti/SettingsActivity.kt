@@ -24,19 +24,19 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
     override fun onResume() {
         super.onResume()
-        preferenceScreen.sharedPreferences.registerOnSharedPreferenceChangeListener(this)
+        preferenceScreen.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
     }
 
     override fun onPause() {
-        preferenceScreen.sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
+        preferenceScreen.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
         super.onPause()
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String) {
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         if (key == "language") {
-            val lang = sharedPreferences.getString("language", "tr")!!
+            val lang = sharedPreferences?.getString("language", "tr") ?: "tr"
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
-            requireActivity().recreate()
+            activity?.recreate()
         }
     }
 }
