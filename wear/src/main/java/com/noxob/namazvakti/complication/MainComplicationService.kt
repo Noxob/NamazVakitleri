@@ -50,6 +50,7 @@ import com.batoulapps.adhan2.Madhab
 import com.batoulapps.adhan2.data.DateComponents
 import kotlinx.datetime.toJavaInstant
 import kotlin.math.*
+import com.noxob.namazvakti.PrayerTimeCalculator
 
 class MainComplicationService : SuspendingComplicationDataSourceService() {
 
@@ -93,15 +94,15 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
         return try {
             Log.d(TAG, "Complication requested: $request")
-            val (lat, lng) = getLocation()
+            val (lat, lng) = PrayerTimeCalculator.getLocation(this)
             Log.d(TAG, "Using location $lat,$lng")
-            val (yesterday, today, tomorrow) = fetchPrayerTimes(lat, lng)
+            val (yesterday, today, tomorrow) = PrayerTimeCalculator.fetchPrayerTimes(this, lat, lng)
             Log.d(TAG, "Fetched prayer times")
             val now = LocalDateTime.now()
-            val (name, start, end) = prayerWindow(now, yesterday, today, tomorrow)
+            val (name, start, end) = PrayerTimeCalculator.prayerWindow(now, yesterday, today, tomorrow)
             Log.d(TAG, "Next prayer $name at $end")
 
-            val kerahat = kerahatInterval(now, today)
+            val kerahat = PrayerTimeCalculator.kerahatInterval(now, today)
             val isKerahat = kerahat != null
             val (kStart, kEnd) = kerahat ?: (start to end)
 

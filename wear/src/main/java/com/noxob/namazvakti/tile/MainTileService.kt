@@ -10,6 +10,7 @@ import androidx.wear.protolayout.material.Text
 import androidx.wear.protolayout.material.Typography
 import androidx.wear.protolayout.material.layouts.PrimaryLayout
 import java.time.Duration
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.wear.tiles.RequestBuilders
@@ -19,6 +20,8 @@ import androidx.wear.tiles.tooling.preview.TilePreviewData
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.tiles.SuspendingTileService
+import com.noxob.namazvakti.PrayerTimeCalculator
+import kotlinx.coroutines.runBlocking
 
 private const val RESOURCES_VERSION = "0"
 
@@ -45,16 +48,27 @@ private fun resources(
         .build()
 }
 
-private fun tile(
+private suspend fun tile(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
 ): TileBuilders.Tile {
+    val (lat, lng) = PrayerTimeCalculator.getLocation(context)
+    val (yesterday, today, tomorrow) = PrayerTimeCalculator.fetchPrayerTimes(context, lat, lng)
+    val now = LocalDateTime.now()
+    val (nextName, _, nextEnd) = PrayerTimeCalculator.prayerWindow(now, yesterday, today, tomorrow)
+    val countdown = Duration.between(now, nextEnd)
+    val names = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+    val others = names.zip(today).joinToString(" \n") { "${it.first}: ${formatTime(it.second)}" }
+    val kerahat = if (PrayerTimeCalculator.kerahatInterval(now, today) != null) "Kerahat" else "Normal"
+
+    val layout = tileLayout(requestParams, context, nextName, nextEnd.toLocalTime(), countdown, others, kerahat)
+
     val singleTileTimeline = TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
             TimelineBuilders.TimelineEntry.Builder()
                 .setLayout(
                     LayoutElementBuilders.Layout.Builder()
-                        .setRoot(tileLayout(requestParams, context))
+                        .setRoot(layout)
                         .build()
                 )
                 .build()
@@ -70,14 +84,12 @@ private fun tile(
 private fun tileLayout(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
+    nextName: String,
+    nextTime: LocalTime,
+    countdown: Duration,
+    others: String,
+    kerahat: String,
 ): LayoutElementBuilders.LayoutElement {
-    val prayerTimes = samplePrayerTimes()
-    val now = LocalTime.now()
-    val (nextName, nextTime) = nextPrayer(now, prayerTimes)
-    val countdown = Duration.between(now, nextTime)
-    val others = prayerTimes.asList().joinToString(" \n") { "${it.first}: ${formatTime(it.second)}" }
-    val kerahat = if (isKerahat(now, prayerTimes)) "Kerahat" else "Normal"
-
     val column = LayoutElementBuilders.Column.Builder()
         .addContent(
             Text.Builder(context, "İstanbul")
@@ -120,49 +132,10 @@ private fun tileLayout(
 @Preview(device = WearDevices.SMALL_ROUND)
 @Preview(device = WearDevices.LARGE_ROUND)
 fun tilePreview(context: Context) = TilePreviewData(::resources) {
-    tile(it, context)
-}
-
-data class PrayerTimes(
-    val fajr: LocalTime,
-    val sunrise: LocalTime,
-    val dhuhr: LocalTime,
-    val asr: LocalTime,
-    val maghrib: LocalTime,
-    val isha: LocalTime,
-) {
-    fun asList(): List<Pair<String, LocalTime>> = listOf(
-        "Fajr" to fajr,
-        "Sunrise" to sunrise,
-        "Dhuhr" to dhuhr,
-        "Asr" to asr,
-        "Maghrib" to maghrib,
-        "Isha" to isha,
-    )
+    runBlocking { tile(it, context) }
 }
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-
-private fun samplePrayerTimes() = PrayerTimes(
-    fajr = LocalTime.of(5, 0),
-    sunrise = LocalTime.of(6, 30),
-    dhuhr = LocalTime.of(13, 0),
-    asr = LocalTime.of(17, 0),
-    maghrib = LocalTime.of(20, 30),
-    isha = LocalTime.of(22, 0),
-)
-
-private fun nextPrayer(now: LocalTime, times: PrayerTimes): Pair<String, LocalTime> =
-    times.asList().firstOrNull { it.second.isAfter(now) } ?: times.asList().first()
-
-private fun isKerahat(now: LocalTime, times: PrayerTimes): Boolean {
-    val morningStart = times.sunrise
-    val morningEnd = times.sunrise.plusMinutes(20)
-    val eveningStart = times.maghrib.minusMinutes(20)
-    val eveningEnd = times.maghrib
-    return (now.isAfter(morningStart) && now.isBefore(morningEnd)) ||
-            (now.isAfter(eveningStart) && now.isBefore(eveningEnd))
-}
 
 private fun formatTime(time: LocalTime): String = time.format(timeFormatter)
 
