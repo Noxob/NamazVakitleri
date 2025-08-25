@@ -149,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             cityName = text
             findViewById<TextView>(R.id.city_text).text = text
+            locationSender.sendCityName(text)
         }
     }
 

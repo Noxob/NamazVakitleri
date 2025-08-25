@@ -91,6 +91,7 @@ object PrayerTimeCalculator {
         withContext(Dispatchers.IO) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val geocoder = android.location.Geocoder(context)
+            val dataClient = Wearable.getDataClient(context)
 
             val city = try {
                 @Suppress("DEPRECATION")
@@ -100,6 +101,19 @@ object PrayerTimeCalculator {
             } catch (e: Exception) {
                 Log.w(TAG, "Geocoder failed", e)
                 null
+            } ?: run {
+                val uri = Uri.parse("wear://*/city")
+                val buffer = try {
+                    withTimeoutOrNull(2000) { dataClient.getDataItems(uri).await() }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error reading city", e)
+                    null
+                }
+                buffer?.use { buf ->
+                    if (buf.count > 0) {
+                        DataMapItem.fromDataItem(buf[0]).dataMap.getString("name")
+                    } else null
+                }
             } ?: prefs.getString(LAST_CITY, "") ?: ""
 
             if (city.isNotEmpty()) {
