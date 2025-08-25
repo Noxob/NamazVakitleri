@@ -135,14 +135,18 @@ object PrayerTimeCalculator {
         val last = prefs.getLong(LAST_SYNC, 0L)
         if (now - last > SYNC_INTERVAL_MS) {
             try {
-                val nodeClient: NodeClient = Wearable.getNodeClient(context)
-                val messageClient: MessageClient = Wearable.getMessageClient(context)
-                val nodes = nodeClient.connectedNodes.await()
-                for (node in nodes) {
-                    try {
-                        messageClient.sendMessage(node.id, "/request_settings", ByteArray(0)).await()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed requesting settings", e)
+                withContext(Dispatchers.IO) {
+                    val nodeClient: NodeClient = Wearable.getNodeClient(context)
+                    val messageClient: MessageClient = Wearable.getMessageClient(context)
+                    val nodes = withTimeoutOrNull(2000) { nodeClient.connectedNodes.await() } ?: emptyList()
+                    for (node in nodes) {
+                        try {
+                            withTimeoutOrNull(2000) {
+                                messageClient.sendMessage(node.id, "/request_settings", ByteArray(0)).await()
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed requesting settings", e)
+                        }
                     }
                 }
             } catch (e: Exception) {
