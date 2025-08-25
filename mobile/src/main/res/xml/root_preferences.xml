@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <ListPreference
+        app:key="calculation_method"
+        app:title="@string/pref_calculation_method"
+        app:entries="@array/calculation_methods"
+        app:entryValues="@array/calculation_method_values"
+        app:defaultValue="TURKEY" />
+    <ListPreference
+        app:key="madhab"
+        app:title="@string/pref_madhab"
+        app:entries="@array/madhabs"
+        app:entryValues="@array/madhab_values"
+        app:defaultValue="SHAFI" />
+</PreferenceScreen>

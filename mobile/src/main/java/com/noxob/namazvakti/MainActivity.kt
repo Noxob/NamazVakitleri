@@ -1,15 +1,18 @@
 package com.noxob.namazvakti
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.preference.PreferenceManager
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -20,9 +23,18 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.material.card.MaterialCardView
+import com.batoulapps.adhan2.CalculationMethod
+import com.batoulapps.adhan2.Coordinates
+import com.batoulapps.adhan2.Madhab
+import com.batoulapps.adhan2.PrayerTimes as AdhanPrayerTimes
+import com.batoulapps.adhan2.data.DateComponents
+import kotlinx.datetime.toJavaInstant
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
 import java.util.Locale
+import java.util.TimeZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +46,8 @@ class MainActivity : AppCompatActivity() {
 
     // UI ilk açılırken boş kalmasın
     private var cityName: String = "Konum alınıyor…"
+    private var lastLat: Double? = null
+    private var lastLon: Double? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +57,10 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
+        }
+
+        findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         if (hasLocationPermission()) {
@@ -58,7 +76,16 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        populatePrayerUI()
+        populatePrayerUI(
+            PrayerTimes(
+                fajr = LocalTime.of(5, 0),
+                sunrise = LocalTime.of(6, 30),
+                dhuhr = LocalTime.of(13, 0),
+                asr = LocalTime.of(17, 0),
+                maghrib = LocalTime.of(20, 30),
+                isha = LocalTime.of(22, 0)
+            )
+        )
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -81,6 +108,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        val lat = lastLat
+        val lon = lastLon
+        if (lat != null && lon != null) {
+            updatePrayerTimes(lat, lon)
+        }
+    }
+
     /** Konumu alır ve şehir adını UI'a yazar */
     private fun updateCityFromLocation() {
         if (!hasLocationPermission()) return
@@ -91,11 +127,17 @@ class MainActivity : AppCompatActivity() {
             .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)
             .addOnSuccessListener { loc ->
                 if (loc != null) {
+                    lastLat = loc.latitude
+                    lastLon = loc.longitude
                     reverseGeocodeAndSetCity(loc.latitude, loc.longitude)
+                    updatePrayerTimes(loc.latitude, loc.longitude)
                 } else {
                     fusedClient.lastLocation.addOnSuccessListener { last ->
                         if (last != null) {
+                            lastLat = last.latitude
+                            lastLon = last.longitude
                             reverseGeocodeAndSetCity(last.latitude, last.longitude)
+                            updatePrayerTimes(last.latitude, last.longitude)
                         } else {
                             findViewById<TextView>(R.id.city_text).text = "Konum alınamadı"
                         }
@@ -156,17 +198,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updatePrayerTimes(lat: Double, lon: Double) {
+        lastLat = lat
+        lastLon = lon
+        lifecycleScope.launch(Dispatchers.Default) {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(this@MainActivity)
+            val method = CalculationMethod.valueOf(
+                prefs.getString("calculation_method", CalculationMethod.TURKEY.name)!!
+            )
+            val madhab = Madhab.valueOf(
+                prefs.getString("madhab", Madhab.SHAFI.name)!!
+            )
+            val params = method.parameters.copy(madhab = madhab)
+            val date = LocalDate.now()
+            val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
+            val times = AdhanPrayerTimes(Coordinates(lat, lon), components, params)
+            val offsetMinutes = TimeZone.getDefault().rawOffset / 60000
+            val zoneOffset = ZoneOffset.ofTotalSeconds(offsetMinutes * 60)
+            val pt = PrayerTimes(
+                fajr = times.fajr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+                sunrise = times.sunrise.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+                dhuhr = times.dhuhr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+                asr = times.asr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+                maghrib = times.maghrib.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+                isha = times.isha.toJavaInstant().atOffset(zoneOffset).toLocalTime()
+            )
+            withContext(Dispatchers.Main) {
+                populatePrayerUI(pt)
+            }
+        }
+    }
 
-    private fun populatePrayerUI() {
-        val prayerTimes = PrayerTimes(
-            fajr = LocalTime.of(5, 0),
-            sunrise = LocalTime.of(6, 30),
-            dhuhr = LocalTime.of(13, 0),
-            asr = LocalTime.of(17, 0),
-            maghrib = LocalTime.of(20, 30),
-            isha = LocalTime.of(22, 0)
-        )
-
+    private fun populatePrayerUI(prayerTimes: PrayerTimes) {
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)

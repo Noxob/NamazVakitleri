@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="calculation_methods">
+        <item>Turkey</item>
+        <item>Muslim World League</item>
+        <item>Egyptian</item>
+        <item>Karachi</item>
+    </string-array>
+    <string-array name="calculation_method_values">
+        <item>TURKEY</item>
+        <item>MUSLIM_WORLD_LEAGUE</item>
+        <item>EGYPTIAN</item>
+        <item>KARACHI</item>
+    </string-array>
+    <string-array name="madhabs">
+        <item>Hanafi</item>
+        <item>Shafi</item>
+    </string-array>
+    <string-array name="madhab_values">
+        <item>HANAFI</item>
+        <item>SHAFI</item>
+    </string-array>
+</resources>
