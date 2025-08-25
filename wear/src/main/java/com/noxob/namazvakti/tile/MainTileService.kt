@@ -1,6 +1,8 @@
 package com.noxob.namazvakti.tile
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ResourceBuilders
@@ -15,6 +17,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
+import androidx.wear.tiles.TileService
 import androidx.wear.tiles.tooling.preview.Preview
 import androidx.wear.tiles.tooling.preview.TilePreviewData
 import androidx.wear.tooling.preview.devices.WearDevices
@@ -22,6 +25,8 @@ import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.tiles.SuspendingTileService
 import com.noxob.namazvakti.PrayerTimeCalculator
 import kotlinx.coroutines.runBlocking
+import java.time.ZoneId
+import kotlin.math.max
 
 private const val RESOURCES_VERSION = "0"
 
@@ -81,6 +86,12 @@ private suspend fun tile(
         kerahat
     )
 
+    val nextUpdate = minOf(
+        System.currentTimeMillis() + 60_000,
+        nextEnd.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    )
+    scheduleTileUpdate(context, nextUpdate)
+
     val singleTileTimeline = TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
             TimelineBuilders.TimelineEntry.Builder()
@@ -97,6 +108,14 @@ private suspend fun tile(
         .setResourcesVersion(RESOURCES_VERSION)
         .setTileTimeline(singleTileTimeline)
         .build()
+}
+
+private fun scheduleTileUpdate(context: Context, triggerAtMillis: Long) {
+    val delay = max(0L, triggerAtMillis - System.currentTimeMillis())
+    val updater = TileService.getUpdater(context)
+    Handler(Looper.getMainLooper()).postDelayed({
+        updater.requestUpdate(MainTileService::class.java)
+    }, delay)
 }
 
 private fun tileLayout(

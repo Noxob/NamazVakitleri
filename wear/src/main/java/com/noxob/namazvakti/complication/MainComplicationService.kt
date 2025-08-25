@@ -158,12 +158,12 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         val totalMinutes = duration.toMinutes().coerceAtLeast(0)
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        val textStr = if (hours > 0) "${'$'}{hours}s ${'$'}{minutes}d" else "${'$'}{minutes}d"
+        val textStr = if (hours > 0) "${hours}s ${minutes}d" else "${minutes}d"
         val text = PlainComplicationText.Builder(textStr).build()
         val descStr = if (isKerahat) {
-            if (lang == "tr") "Kerahat ${'$'}displayName'e kadar" else "Kerahat until ${'$'}displayName"
+            if (lang == "tr") "Kerahat ${displayName}'e kadar" else "Kerahat until $displayName"
         } else {
-            if (lang == "tr") "${'$'}displayName'e kadar" else "Time until ${'$'}displayName"
+            if (lang == "tr") "$displayName'e kadar" else "Time until $displayName"
         }
         val description = PlainComplicationText.Builder(descStr).build()
 
