@@ -128,6 +128,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
         } catch (e: Exception) {
             Log.e(TAG, "Error creating complication", e)
             val now = LocalDateTime.now()
+            scheduleComplicationUpdate(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1))
             createComplicationData(
                 request.complicationType,
                 "Prayer",
@@ -340,11 +341,11 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun scheduleComplicationUpdate(triggerAtMillis: Long) {
         val delay = max(0L, triggerAtMillis - System.currentTimeMillis())
-        val requester = ComplicationDataSourceUpdateRequester.create(
-            this,
-            ComponentName(this, MainComplicationService::class.java)
-        )
         Handler(Looper.getMainLooper()).postDelayed({
+            val requester = ComplicationDataSourceUpdateRequester.create(
+                applicationContext,
+                ComponentName(applicationContext, MainComplicationService::class.java)
+            )
             requester.requestUpdateAll()
         }, delay)
     }
