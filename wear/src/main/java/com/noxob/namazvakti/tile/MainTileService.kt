@@ -29,12 +29,29 @@ import java.time.ZoneId
 import kotlin.math.max
 
 private const val RESOURCES_VERSION = "0"
+private const val PREFS = "prayer_cache"
+private const val LAST_TILE_UPDATE = "last_tile_update"
+private const val TILE_REFRESH_INTERVAL_MS = 30 * 60 * 1000L
 
 /**
  * Skeleton for a tile with no images.
  */
 @OptIn(ExperimentalHorologistApi::class)
 class MainTileService : SuspendingTileService() {
+    companion object {
+        fun refreshIfStale(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val last = prefs.getLong(LAST_TILE_UPDATE, 0L)
+            if (System.currentTimeMillis() - last > TILE_REFRESH_INTERVAL_MS) {
+                TileService.getUpdater(context).requestUpdate(MainTileService::class.java)
+            }
+        }
+
+        fun saveUpdateTime(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putLong(LAST_TILE_UPDATE, System.currentTimeMillis()).apply()
+        }
+    }
 
     override suspend fun resourcesRequest(
         requestParams: RequestBuilders.ResourcesRequest
@@ -91,6 +108,7 @@ private suspend fun tile(
         nextEnd.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     )
     scheduleTileUpdate(context, nextUpdate)
+    MainTileService.saveUpdateTime(context)
 
     val singleTileTimeline = TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(

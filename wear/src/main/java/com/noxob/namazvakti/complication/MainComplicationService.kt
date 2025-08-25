@@ -51,6 +51,7 @@ import com.batoulapps.adhan2.data.DateComponents
 import kotlinx.datetime.toJavaInstant
 import kotlin.math.*
 import com.noxob.namazvakti.PrayerTimeCalculator
+import com.noxob.namazvakti.tile.MainTileService
 
 class MainComplicationService : SuspendingComplicationDataSourceService() {
 
@@ -93,6 +94,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
     }
 
     override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData {
+        MainTileService.refreshIfStale(this)
         return try {
             Log.d(TAG, "Complication requested: $request")
             val (lat, lng) = PrayerTimeCalculator.getLocation(this)
