@@ -1,21 +1,21 @@
 <resources>
     <string name="app_name">NamazVakti</string>
-    <string name="settings">Settings</string>
-    <string name="pref_calc_method">Calculation method</string>
-    <string name="pref_madhab">Madhab</string>
+    <string name="settings">Ayarlar</string>
+    <string name="pref_calc_method">Hesaplama yöntemi</string>
+    <string name="pref_madhab">Mezhep</string>
     <string-array name="calc_method_names">
-        <item>Muslim World League</item>
-        <item>Egyptian</item>
-        <item>Karachi</item>
-        <item>Umm Al-Qura</item>
+        <item>Dünya Müslüman Birliği</item>
+        <item>Mısır</item>
+        <item>Karaçi</item>
+        <item>Umm el-Kura</item>
         <item>Dubai</item>
-        <item>Moonsighting Committee</item>
-        <item>North America</item>
-        <item>Kuwait</item>
-        <item>Qatar</item>
-        <item>Singapore</item>
-        <item>Turkey</item>
-        <item>Other</item>
+        <item>Hilal Gözlem Komitesi</item>
+        <item>Kuzey Amerika</item>
+        <item>Kuveyt</item>
+        <item>Katar</item>
+        <item>Singapur</item>
+        <item>Türkiye</item>
+        <item>Diğer</item>
     </string-array>
     <string-array name="calc_method_values">
         <item>MUSLIM_WORLD_LEAGUE</item>
@@ -32,25 +32,25 @@
         <item>OTHER</item>
     </string-array>
     <string-array name="madhab_names">
-        <item>Shafi</item>
-        <item>Hanafi</item>
+        <item>Şafiî</item>
+        <item>Hanefi</item>
     </string-array>
     <string-array name="madhab_values">
         <item>SHAFI</item>
         <item>HANAFI</item>
     </string-array>
-    <string name="pref_language">Language</string>
+    <string name="pref_language">Dil</string>
     <string-array name="language_names">
-        <item>Turkish</item>
-        <item>English</item>
+        <item>Türkçe</item>
+        <item>İngilizce</item>
     </string-array>
     <string-array name="language_values">
         <item>tr</item>
         <item>en</item>
     </string-array>
-    <string name="kerahat_in">Prohibited time</string>
-    <string name="kerahat_out">Not prohibited time</string>
-    <string name="abbr_hour">h</string>
-    <string name="abbr_minute">m</string>
-    <string name="abbr_second">s</string>
+    <string name="kerahat_in">Kerahat vaktinde</string>
+    <string name="kerahat_out">Kerahat vakti değil</string>
+    <string name="abbr_hour">sa</string>
+    <string name="abbr_minute">dk</string>
+    <string name="abbr_second">sn</string>
 </resources>

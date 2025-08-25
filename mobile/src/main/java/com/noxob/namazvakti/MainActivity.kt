@@ -14,11 +14,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
+import androidx.core.os.LocaleListCompat
 import com.batoulapps.adhan2.CalculationMethod
 import com.batoulapps.adhan2.Coordinates
 import com.batoulapps.adhan2.data.DateComponents
@@ -61,6 +63,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val lang = prefs.getString("language", "tr")!!
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -240,7 +245,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         val now = LocalTime.now()
-        val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
+        val kerahatText = if (isKerahat(now, prayerTimes))
+            getString(R.string.kerahat_in) else getString(R.string.kerahat_out)
         findViewById<TextView>(R.id.kerahat_status).text = kerahatText
 
         startCountdown(prayerTimes)
@@ -259,15 +265,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 val countdown = Duration.between(nowDateTime, nextDateTime)
                 findViewById<TextView>(R.id.next_prayer_label).text = "$displayName - ${formatTime(nextTime)}"
-                findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
-                delay(60_000)
+                findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(this@MainActivity, countdown)
+                delay(1_000)
             }
         }
     }
 
     private fun translatePrayerName(name: String): String {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        return when (prefs.getString("language", "tr")) {
+        return when (AppCompatDelegate.getApplicationLocales()[0]?.language) {
             "tr" -> when (name) {
                 "Fajr" -> "İmsak"
                 "Sunrise" -> "Güneş"
