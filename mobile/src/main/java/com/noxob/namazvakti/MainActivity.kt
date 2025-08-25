@@ -1,12 +1,14 @@
 package com.noxob.namazvakti
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -20,12 +22,21 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.material.card.MaterialCardView
+import com.batoulapps.adhan2.CalculationMethod
+import com.batoulapps.adhan2.Coordinates
+import com.batoulapps.adhan2.Madhab
+import com.batoulapps.adhan2.PrayerTimes as AdhanPrayerTimes
+import com.batoulapps.adhan2.data.DateComponents
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneOffset
+import java.util.TimeZone
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.toJavaInstant
 
 class MainActivity : AppCompatActivity() {
 
@@ -45,6 +56,10 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        findViewById<ImageButton>(R.id.settings_button).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         if (hasLocationPermission()) {
             Log.d("MainActivity", "Location permission already granted")
             locationSender.sendLastLocation()
@@ -57,8 +72,13 @@ class MainActivity : AppCompatActivity() {
                 0
             )
         }
+    }
 
-        populatePrayerUI()
+    override fun onResume() {
+        super.onResume()
+        if (hasLocationPermission()) {
+            updateCityFromLocation()
+        }
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -92,10 +112,12 @@ class MainActivity : AppCompatActivity() {
             .addOnSuccessListener { loc ->
                 if (loc != null) {
                     reverseGeocodeAndSetCity(loc.latitude, loc.longitude)
+                    refreshPrayerTimes(loc.latitude, loc.longitude)
                 } else {
                     fusedClient.lastLocation.addOnSuccessListener { last ->
                         if (last != null) {
                             reverseGeocodeAndSetCity(last.latitude, last.longitude)
+                            refreshPrayerTimes(last.latitude, last.longitude)
                         } else {
                             findViewById<TextView>(R.id.city_text).text = "Konum alınamadı"
                         }
@@ -156,23 +178,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-    private fun populatePrayerUI() {
-        val prayerTimes = PrayerTimes(
-            fajr = LocalTime.of(5, 0),
-            sunrise = LocalTime.of(6, 30),
-            dhuhr = LocalTime.of(13, 0),
-            asr = LocalTime.of(17, 0),
-            maghrib = LocalTime.of(20, 30),
-            isha = LocalTime.of(22, 0)
-        )
-
+    private fun populatePrayerUI(prayerTimes: PrayerTimes) {
         val now = LocalTime.now()
         val (nextName, nextTime) = nextPrayer(now, prayerTimes)
         val countdown = Duration.between(now, nextTime)
 
-        // Şehir adı başlangıçta placeholder; konum çözülünce updateCityFromLocation() günceller
-        findViewById<TextView>(R.id.city_text).text = cityName
         findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
         findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
 
@@ -188,6 +198,39 @@ class MainActivity : AppCompatActivity() {
 
         val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
         findViewById<TextView>(R.id.kerahat_status).text = kerahatText
+    }
+
+    private fun refreshPrayerTimes(lat: Double, lon: Double) {
+        lifecycleScope.launch {
+            val times = withContext(Dispatchers.Default) { computePrayerTimes(lat, lon) }
+            populatePrayerUI(times)
+        }
+    }
+
+    private fun computePrayerTimes(lat: Double, lon: Double): PrayerTimes {
+        val (method, madhab) = loadSettings()
+        val params = method.parameters.copy(madhab = madhab)
+        val coordinates = Coordinates(lat, lon)
+        val today = LocalDate.now()
+        val components = DateComponents(today.year, today.monthValue, today.dayOfMonth)
+        val times = AdhanPrayerTimes(coordinates, components, params)
+        val offsetMinutes = TimeZone.getDefault().rawOffset / 60000
+        val zoneOffset = ZoneOffset.ofTotalSeconds(offsetMinutes * 60)
+        return PrayerTimes(
+            fajr = times.fajr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+            sunrise = times.sunrise.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+            dhuhr = times.dhuhr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+            asr = times.asr.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+            maghrib = times.maghrib.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+            isha = times.isha.toJavaInstant().atOffset(zoneOffset).toLocalTime(),
+        )
+    }
+
+    private fun loadSettings(): Pair<CalculationMethod, Madhab> {
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        val method = prefs.getString("method", CalculationMethod.TURKEY.name) ?: CalculationMethod.TURKEY.name
+        val madhab = prefs.getString("madhab", Madhab.SHAFI.name) ?: Madhab.SHAFI.name
+        return CalculationMethod.valueOf(method) to Madhab.valueOf(madhab)
     }
 
     private fun iconForPrayer(name: String): Int = when (name) {
