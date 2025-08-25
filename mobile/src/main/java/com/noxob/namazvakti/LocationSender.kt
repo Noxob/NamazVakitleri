@@ -11,7 +11,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 
-class LocationSender(private val context: Context) {
+class LocationSender(private val context: Context, private val onLocation: ((Location) -> Unit)? = null) {
 
     private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
     private val dataClient = Wearable.getDataClient(context)
@@ -40,6 +40,7 @@ class LocationSender(private val context: Context) {
     }
 
     private fun send(location: Location) {
+        onLocation?.invoke(location)
         Log.d("LocationSender", "Sending location ${'$'}{location.latitude}, ${'$'}{location.longitude}")
         val request = PutDataMapRequest.create("/location").apply {
             dataMap.putDouble("lat", location.latitude)
