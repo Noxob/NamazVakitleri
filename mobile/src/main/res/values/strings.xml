@@ -2,18 +2,41 @@
     <string name="app_name">NamazVakti</string>
     <string name="settings">Ayarlar</string>
     <string name="pref_calc_method">Hesaplama yöntemi</string>
+    <string name="pref_madhab">Mezhep</string>
     <string-array name="calc_method_names">
         <item>Muslim World League</item>
         <item>Egyptian</item>
         <item>Karachi</item>
         <item>Umm Al-Qura</item>
+        <item>Dubai</item>
         <item>Moonsighting Committee</item>
+        <item>North America</item>
+        <item>Kuwait</item>
+        <item>Qatar</item>
+        <item>Singapore</item>
+        <item>Turkey</item>
+        <item>Other</item>
     </string-array>
     <string-array name="calc_method_values">
         <item>MUSLIM_WORLD_LEAGUE</item>
         <item>EGYPTIAN</item>
         <item>KARACHI</item>
         <item>UMM_AL_QURA</item>
+        <item>DUBAI</item>
         <item>MOON_SIGHTING_COMMITTEE</item>
+        <item>NORTH_AMERICA</item>
+        <item>KUWAIT</item>
+        <item>QATAR</item>
+        <item>SINGAPORE</item>
+        <item>TURKEY</item>
+        <item>OTHER</item>
+    </string-array>
+    <string-array name="madhab_names">
+        <item>Shafi</item>
+        <item>Hanafi</item>
+    </string-array>
+    <string-array name="madhab_values">
+        <item>SHAFI</item>
+        <item>HANAFI</item>
     </string-array>
 </resources>

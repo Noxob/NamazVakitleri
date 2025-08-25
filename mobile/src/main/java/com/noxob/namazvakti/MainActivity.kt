@@ -22,16 +22,22 @@ import androidx.preference.PreferenceManager
 import com.batoulapps.adhan2.CalculationMethod
 import com.batoulapps.adhan2.Coordinates
 import com.batoulapps.adhan2.data.DateComponents
+import com.batoulapps.adhan2.Madhab
 import com.batoulapps.adhan2.PrayerTimes as AdhanPrayerTimes
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.material.card.MaterialCardView
 import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
 import kotlinx.datetime.Clock
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -50,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         maghrib = LocalTime.of(20, 30),
         isha = LocalTime.of(22, 0)
     )
+
+    private var countdownJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -190,7 +198,12 @@ class MainActivity : AppCompatActivity() {
             "calc_method",
             CalculationMethod.MUSLIM_WORLD_LEAGUE.name
         )!!
-        val params = CalculationMethod.valueOf(methodName).parameters
+        val madhabName = prefs.getString(
+            "madhab",
+            Madhab.SHAFI.name
+        )!!
+        var params = CalculationMethod.valueOf(methodName).parameters
+        params = params.copy(madhab = Madhab.valueOf(madhabName))
         val coordinates = Coordinates(lat, lon)
         val date = DateComponents.from(Clock.System.now())
         val adhanTimes = AdhanPrayerTimes(coordinates, date, params)
@@ -205,14 +218,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun populatePrayerUI(prayerTimes: PrayerTimes) {
-        val now = LocalTime.now()
-        val (nextName, nextTime) = nextPrayer(now, prayerTimes)
-        val countdown = Duration.between(now, nextTime)
-
         // Şehir adı başlangıçta placeholder; konum çözülünce updateCityFromLocation() günceller
         findViewById<TextView>(R.id.city_text).text = cityName
-        findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
-        findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
 
         val list = findViewById<LinearLayout>(R.id.prayer_list)
         list.removeAllViews()
@@ -224,8 +231,29 @@ class MainActivity : AppCompatActivity() {
             list.addView(card)
         }
 
+        val now = LocalTime.now()
         val kerahatText = if (isKerahat(now, prayerTimes)) "Kerahat vaktinde" else "Kerahat vakti değil"
         findViewById<TextView>(R.id.kerahat_status).text = kerahatText
+
+        startCountdown(prayerTimes)
+    }
+
+    private fun startCountdown(prayerTimes: PrayerTimes) {
+        countdownJob?.cancel()
+        countdownJob = lifecycleScope.launch {
+            while (isActive) {
+                val nowDateTime = LocalDateTime.now()
+                val (nextName, nextTime) = nextPrayer(nowDateTime.toLocalTime(), prayerTimes)
+                var nextDateTime = LocalDateTime.of(LocalDate.now(), nextTime)
+                if (nextDateTime.isBefore(nowDateTime)) {
+                    nextDateTime = nextDateTime.plusDays(1)
+                }
+                val countdown = Duration.between(nowDateTime, nextDateTime)
+                findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
+                findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
+                delay(60_000)
+            }
+        }
     }
 
     private fun iconForPrayer(name: String): Int = when (name) {

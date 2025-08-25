@@ -5,4 +5,11 @@
         android:entries="@array/calc_method_names"
         android:entryValues="@array/calc_method_values"
         android:defaultValue="MUSLIM_WORLD_LEAGUE"/>
+    <ListPreference
+        android:key="madhab"
+        android:title="@string/pref_madhab"
+        android:entries="@array/madhab_names"
+        android:entryValues="@array/madhab_values"
+        android:defaultValue="SHAFI"/>
 </PreferenceScreen>
+
