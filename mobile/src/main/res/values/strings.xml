@@ -39,4 +39,13 @@
         <item>SHAFI</item>
         <item>HANAFI</item>
     </string-array>
+    <string name="pref_language">Dil</string>
+    <string-array name="language_names">
+        <item>Türkçe</item>
+        <item>English</item>
+    </string-array>
+    <string-array name="language_values">
+        <item>tr</item>
+        <item>en</item>
+    </string-array>
 </resources>

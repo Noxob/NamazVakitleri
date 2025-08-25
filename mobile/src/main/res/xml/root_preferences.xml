@@ -11,5 +11,11 @@
         android:entries="@array/madhab_names"
         android:entryValues="@array/madhab_values"
         android:defaultValue="SHAFI"/>
+    <ListPreference
+        android:key="language"
+        android:title="@string/pref_language"
+        android:entries="@array/language_names"
+        android:entryValues="@array/language_values"
+        android:defaultValue="tr"/>
 </PreferenceScreen>
 

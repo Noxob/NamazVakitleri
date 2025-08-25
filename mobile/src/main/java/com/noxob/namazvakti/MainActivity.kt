@@ -149,7 +149,15 @@ class MainActivity : AppCompatActivity() {
 
     /** Ters geocode: Koordinatlardan şehir adını çözer ve UI'ı günceller */
     private fun reverseGeocodeAndSetCity(lat: Double, lon: Double) {
-        val geocoder = Geocoder(this, Locale("tr", "TR"))
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val lang = prefs.getString("language", "tr")!!
+        val geocoder = Geocoder(
+            this,
+            when (lang) {
+                "tr" -> Locale("tr", "TR")
+                else -> Locale("en", "US")
+            }
+        )
 
         fun pickName(addr: Address?): String {
             return listOfNotNull(
@@ -226,7 +234,7 @@ class MainActivity : AppCompatActivity() {
         prayerTimes.asList().forEach { (name, time) ->
             val card = layoutInflater.inflate(R.layout.item_prayer_time, list, false) as MaterialCardView
             card.findViewById<ImageView>(R.id.icon).setImageResource(iconForPrayer(name))
-            card.findViewById<TextView>(R.id.prayer_name).text = name
+            card.findViewById<TextView>(R.id.prayer_name).text = translatePrayerName(name)
             card.findViewById<TextView>(R.id.prayer_time).text = formatTime(time)
             list.addView(card)
         }
@@ -244,15 +252,32 @@ class MainActivity : AppCompatActivity() {
             while (isActive) {
                 val nowDateTime = LocalDateTime.now()
                 val (nextName, nextTime) = nextPrayer(nowDateTime.toLocalTime(), prayerTimes)
+                val displayName = translatePrayerName(nextName)
                 var nextDateTime = LocalDateTime.of(LocalDate.now(), nextTime)
                 if (nextDateTime.isBefore(nowDateTime)) {
                     nextDateTime = nextDateTime.plusDays(1)
                 }
                 val countdown = Duration.between(nowDateTime, nextDateTime)
-                findViewById<TextView>(R.id.next_prayer_label).text = "$nextName - ${formatTime(nextTime)}"
+                findViewById<TextView>(R.id.next_prayer_label).text = "$displayName - ${formatTime(nextTime)}"
                 findViewById<TextView>(R.id.next_prayer_countdown).text = formatDuration(countdown)
                 delay(60_000)
             }
+        }
+    }
+
+    private fun translatePrayerName(name: String): String {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        return when (prefs.getString("language", "tr")) {
+            "tr" -> when (name) {
+                "Fajr" -> "İmsak"
+                "Sunrise" -> "Güneş"
+                "Dhuhr" -> "Öğle"
+                "Asr" -> "İkindi"
+                "Maghrib" -> "Akşam"
+                "Isha" -> "Yatsı"
+                else -> name
+            }
+            else -> name
         }
     }
 
