@@ -2,7 +2,10 @@ package com.noxob.namazvakti
 
 import java.time.Duration
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toJavaInstant
 
 data class PrayerTimes(
     val fajr: LocalTime,
@@ -46,3 +49,6 @@ fun isKerahat(now: LocalTime, times: PrayerTimes): Boolean {
     return (now.isAfter(morningStart) && now.isBefore(morningEnd)) ||
             (now.isAfter(eveningStart) && now.isBefore(eveningEnd))
 }
+
+fun Instant.toLocalTime(): LocalTime =
+    this.toJavaInstant().atZone(ZoneId.systemDefault()).toLocalTime()
