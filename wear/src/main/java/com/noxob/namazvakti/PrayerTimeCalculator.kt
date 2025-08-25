@@ -189,29 +189,32 @@ object PrayerTimeCalculator {
         val cachedLat = prefs.getFloat(CACHE_LAT, 0f).toDouble()
         val cachedLng = prefs.getFloat(CACHE_LNG, 0f).toDouble()
 
-        if (cachedDay == today && isLocationClose(lat, lng, cachedLat, cachedLng)) {
+        val useCache = cachedDay == today && isLocationClose(lat, lng, cachedLat, cachedLng)
+        val cachedResult = if (useCache) {
             val todayStr = prefs.getString(CACHE_TODAY, null)
             val tomorrowStr = prefs.getString(CACHE_TOMORROW, null)
             if (todayStr != null && tomorrowStr != null) {
                 val todayTimes = parseTimes(todayStr)
                 val tomorrowTimes = parseTimes(tomorrowStr)
                 val yesterdayTimes = computeTimes(lat, lng, yesterday, prefs)
-                return@withContext Triple(yesterdayTimes, todayTimes, tomorrowTimes)
-            }
-        }
+                Triple(yesterdayTimes, todayTimes, tomorrowTimes)
+            } else null
+        } else null
 
-        val tomorrow = today.plusDays(1)
-        val yesterdayTimes = computeTimes(lat, lng, yesterday, prefs)
-        val todayTimes = computeTimes(lat, lng, today, prefs)
-        val tomorrowTimes = computeTimes(lat, lng, tomorrow, prefs)
-        prefs.edit()
-            .putString(CACHE_DAY, today.toString())
-            .putFloat(CACHE_LAT, lat.toFloat())
-            .putFloat(CACHE_LNG, lng.toFloat())
-            .putString(CACHE_TODAY, formatTimes(todayTimes))
-            .putString(CACHE_TOMORROW, formatTimes(tomorrowTimes))
-            .apply()
-        Triple(yesterdayTimes, todayTimes, tomorrowTimes)
+        cachedResult ?: run {
+            val tomorrow = today.plusDays(1)
+            val yesterdayTimes = computeTimes(lat, lng, yesterday, prefs)
+            val todayTimes = computeTimes(lat, lng, today, prefs)
+            val tomorrowTimes = computeTimes(lat, lng, tomorrow, prefs)
+            prefs.edit()
+                .putString(CACHE_DAY, today.toString())
+                .putFloat(CACHE_LAT, lat.toFloat())
+                .putFloat(CACHE_LNG, lng.toFloat())
+                .putString(CACHE_TODAY, formatTimes(todayTimes))
+                .putString(CACHE_TOMORROW, formatTimes(tomorrowTimes))
+                .apply()
+            Triple(yesterdayTimes, todayTimes, tomorrowTimes)
+        }
     }
 
     fun prayerWindow(
