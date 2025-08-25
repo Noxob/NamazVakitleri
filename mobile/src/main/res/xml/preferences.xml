@@ -1,0 +1,14 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="calc_method"
+        android:title="@string/pref_calc_method"
+        android:entries="@array/calc_method_entries"
+        android:entryValues="@array/calc_method_values"
+        android:defaultValue="TURKEY" />
+    <ListPreference
+        android:key="madhab"
+        android:title="@string/pref_madhab"
+        android:entries="@array/madhab_entries"
+        android:entryValues="@array/madhab_values"
+        android:defaultValue="SHAFI" />
+</PreferenceScreen>

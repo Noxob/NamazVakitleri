@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">NamazVakti</string>
+    <string name="settings">Settings</string>
+    <string name="pref_calc_method">Calculation Method</string>
+    <string name="pref_madhab">Madhab</string>
+
+    <string name="fajr_placeholder">Fajr: --</string>
+    <string name="sunrise_placeholder">Sunrise: --</string>
+    <string name="dhuhr_placeholder">Dhuhr: --</string>
+    <string name="asr_placeholder">Asr: --</string>
+    <string name="maghrib_placeholder">Maghrib: --</string>
+    <string name="isha_placeholder">Isha: --</string>
+
+    <string name="fajr_time">Fajr: %1$s</string>
+    <string name="sunrise_time">Sunrise: %1$s</string>
+    <string name="dhuhr_time">Dhuhr: %1$s</string>
+    <string name="asr_time">Asr: %1$s</string>
+    <string name="maghrib_time">Maghrib: %1$s</string>
+    <string name="isha_time">Isha: %1$s</string>
 </resources>
