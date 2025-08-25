@@ -1,0 +1,21 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="calc_method"
+        android:title="@string/pref_calc_method"
+        android:entries="@array/calc_method_names"
+        android:entryValues="@array/calc_method_values"
+        android:defaultValue="MUSLIM_WORLD_LEAGUE"/>
+    <ListPreference
+        android:key="madhab"
+        android:title="@string/pref_madhab"
+        android:entries="@array/madhab_names"
+        android:entryValues="@array/madhab_values"
+        android:defaultValue="SHAFI"/>
+    <ListPreference
+        android:key="language"
+        android:title="@string/pref_language"
+        android:entries="@array/language_names"
+        android:entryValues="@array/language_values"
+        android:defaultValue="tr"/>
+</PreferenceScreen>
+

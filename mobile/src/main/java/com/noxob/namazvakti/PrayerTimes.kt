@@ -1,8 +1,13 @@
 package com.noxob.namazvakti
 
+import android.content.Context
+import com.noxob.namazvakti.R
 import java.time.Duration
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toJavaInstant
 
 data class PrayerTimes(
     val fajr: LocalTime,
@@ -26,12 +31,17 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 fun formatTime(time: LocalTime): String = time.format(timeFormatter)
 
-fun formatDuration(duration: Duration): String {
+fun formatDuration(context: Context, duration: Duration): String {
     val hours = duration.toHours()
     val minutes = duration.toMinutes() % 60
+    val seconds = duration.seconds % 60
+    val h = context.getString(R.string.abbr_hour)
+    val m = context.getString(R.string.abbr_minute)
+    val s = context.getString(R.string.abbr_second)
     return buildString {
-        if (hours > 0) append("${hours}h ")
-        append("${minutes}m")
+        if (hours > 0) append("${hours}$h ")
+        if (minutes > 0 || hours > 0) append("${minutes}$m ")
+        append("${seconds}$s")
     }
 }
 
@@ -46,3 +56,6 @@ fun isKerahat(now: LocalTime, times: PrayerTimes): Boolean {
     return (now.isAfter(morningStart) && now.isBefore(morningEnd)) ||
             (now.isAfter(eveningStart) && now.isBefore(eveningEnd))
 }
+
+fun Instant.toLocalTime(): LocalTime =
+    this.toJavaInstant().atZone(ZoneId.systemDefault()).toLocalTime()
