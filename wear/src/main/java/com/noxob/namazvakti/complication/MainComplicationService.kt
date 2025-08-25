@@ -312,7 +312,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
 
     private fun computeTimes(lat: Double, lng: Double, date: LocalDate): List<LocalTime> {
         val coordinates = Coordinates(lat, lng)
-        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.HANAFI)
+        val params = CalculationMethod.TURKEY.parameters.copy(madhab = Madhab.SHAFI)
         val components = DateComponents(date.year, date.monthValue, date.dayOfMonth)
         val times = PrayerTimes(coordinates, components, params)
         val offsetMinutes = TimeZone.getDefault().rawOffset / 60000
