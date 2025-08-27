@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.noxob.namazvakti.SettingsSender
 
 class MainActivity : AppCompatActivity() {
 
@@ -66,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val lang = prefs.getString("language", "tr")!!
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
+        SettingsSender(this).send()
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
@@ -149,6 +151,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             cityName = text
             findViewById<TextView>(R.id.city_text).text = text
+            locationSender.sendCityName(text)
         }
     }
 

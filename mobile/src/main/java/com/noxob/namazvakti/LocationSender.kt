@@ -39,6 +39,14 @@ class LocationSender(private val context: Context) {
         }
     }
 
+    fun sendCityName(city: String) {
+        val request = PutDataMapRequest.create("/city").apply {
+            dataMap.putString("name", city)
+            dataMap.putLong("time", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request)
+    }
+
     private fun send(location: Location) {
         Log.d("LocationSender", "Sending location ${'$'}{location.latitude}, ${'$'}{location.longitude}")
         val request = PutDataMapRequest.create("/location").apply {

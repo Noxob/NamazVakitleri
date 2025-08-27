@@ -6,6 +6,8 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.preference.PreferenceFragmentCompat
 import android.content.SharedPreferences
+import com.noxob.namazvakti.SettingsSender
+
 
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +39,9 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             val lang = sharedPreferences?.getString("language", "tr") ?: "tr"
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
             activity?.recreate()
+        }
+        if (key == "language" || key == "calc_method" || key == "madhab") {
+            SettingsSender(requireContext()).send()
         }
     }
 }

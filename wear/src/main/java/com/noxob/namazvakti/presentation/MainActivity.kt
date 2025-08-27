@@ -31,6 +31,7 @@ import androidx.wear.tooling.preview.devices.WearDevices
 import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
 import com.noxob.namazvakti.R
 import com.noxob.namazvakti.complication.MainComplicationService
+import com.noxob.namazvakti.tile.MainTileService
 import com.noxob.namazvakti.presentation.theme.NamazVaktiTheme
 
 class MainActivity : ComponentActivity() {
@@ -52,6 +53,8 @@ class MainActivity : ComponentActivity() {
         ).requestUpdateAll().also {
             Log.d("MainActivity", "Requested complication update")
         }
+
+        MainTileService.refreshIfStale(this)
 
         setContent {
             WearApp("Android")
