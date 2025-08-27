@@ -112,7 +112,7 @@ class MainComplicationService : SuspendingComplicationDataSourceService() {
                 kEnd,
                 isKerahat
             )
-            val nextMinute = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(1)
+            val nextMinute = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(1)
             val targetMillis = kEnd.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             scheduleComplicationUpdate(minOf(nextMinute, targetMillis))
             data
