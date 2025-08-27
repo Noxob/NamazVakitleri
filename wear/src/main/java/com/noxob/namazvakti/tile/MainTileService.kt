@@ -10,6 +10,7 @@ import androidx.wear.protolayout.material.Text
 import androidx.wear.protolayout.material.Typography
 import androidx.wear.protolayout.material.layouts.PrimaryLayout
 import java.time.Duration
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.wear.tiles.RequestBuilders
@@ -19,6 +20,7 @@ import androidx.wear.tiles.tooling.preview.TilePreviewData
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.google.android.horologist.annotations.ExperimentalHorologistApi
 import com.google.android.horologist.tiles.SuspendingTileService
+import com.noxob.namazvakti.prayer.PrayerTimesRepository
 
 private const val RESOURCES_VERSION = "0"
 
@@ -34,7 +36,23 @@ class MainTileService : SuspendingTileService() {
 
     override suspend fun tileRequest(
         requestParams: RequestBuilders.TileRequest
-    ) = tile(requestParams, this)
+    ): TileBuilders.Tile {
+        val repo = PrayerTimesRepository(this)
+        val (lat, lng) = repo.getLocation()
+        val (yesterday, today, tomorrow) = repo.fetchPrayerTimes(lat, lng)
+        val now = LocalDateTime.now()
+        val (nextName, _, nextDateTime) = repo.prayerWindow(now, yesterday, today, tomorrow)
+        val countdown = Duration.between(now, nextDateTime)
+        val isKerahat = repo.kerahatInterval(now, today) != null
+        val data = TileData(
+            nextName = nextName,
+            nextTime = nextDateTime.toLocalTime(),
+            countdown = countdown,
+            todayTimes = today,
+            isKerahat = isKerahat
+        )
+        return tile(requestParams, this, data)
+    }
 }
 
 private fun resources(
@@ -48,13 +66,14 @@ private fun resources(
 private fun tile(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
+    data: TileData,
 ): TileBuilders.Tile {
     val singleTileTimeline = TimelineBuilders.Timeline.Builder()
         .addTimelineEntry(
             TimelineBuilders.TimelineEntry.Builder()
                 .setLayout(
                     LayoutElementBuilders.Layout.Builder()
-                        .setRoot(tileLayout(requestParams, context))
+                        .setRoot(tileLayout(requestParams, context, data))
                         .build()
                 )
                 .build()
@@ -70,13 +89,12 @@ private fun tile(
 private fun tileLayout(
     requestParams: RequestBuilders.TileRequest,
     context: Context,
+    data: TileData,
 ): LayoutElementBuilders.LayoutElement {
-    val prayerTimes = samplePrayerTimes()
-    val now = LocalTime.now()
-    val (nextName, nextTime) = nextPrayer(now, prayerTimes)
-    val countdown = Duration.between(now, nextTime)
-    val others = prayerTimes.asList().joinToString(" \n") { "${it.first}: ${formatTime(it.second)}" }
-    val kerahat = if (isKerahat(now, prayerTimes)) "Kerahat" else "Normal"
+    val names = listOf("Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+    val others = names.zip(data.todayTimes)
+        .joinToString(" \n") { "${it.first}: ${formatTime(it.second)}" }
+    val kerahat = if (data.isKerahat) "Kerahat" else "Normal"
 
     val column = LayoutElementBuilders.Column.Builder()
         .addContent(
@@ -86,13 +104,13 @@ private fun tileLayout(
                 .build()
         )
         .addContent(
-            Text.Builder(context, "$nextName ${formatTime(nextTime)}")
+            Text.Builder(context, "${data.nextName} ${formatTime(data.nextTime)}")
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_TITLE3)
                 .build()
         )
         .addContent(
-            Text.Builder(context, "${formatDuration(countdown)}")
+            Text.Builder(context, "${formatDuration(data.countdown)}")
                 .setColor(argb(Colors.DEFAULT.onSurface))
                 .setTypography(Typography.TYPOGRAPHY_CAPTION1)
                 .build()
@@ -117,52 +135,35 @@ private fun tileLayout(
         .build()
 }
 
+data class TileData(
+    val nextName: String,
+    val nextTime: LocalTime,
+    val countdown: Duration,
+    val todayTimes: List<LocalTime>,
+    val isKerahat: Boolean,
+)
+
 @Preview(device = WearDevices.SMALL_ROUND)
 @Preview(device = WearDevices.LARGE_ROUND)
 fun tilePreview(context: Context) = TilePreviewData(::resources) {
-    tile(it, context)
-}
-
-data class PrayerTimes(
-    val fajr: LocalTime,
-    val sunrise: LocalTime,
-    val dhuhr: LocalTime,
-    val asr: LocalTime,
-    val maghrib: LocalTime,
-    val isha: LocalTime,
-) {
-    fun asList(): List<Pair<String, LocalTime>> = listOf(
-        "Fajr" to fajr,
-        "Sunrise" to sunrise,
-        "Dhuhr" to dhuhr,
-        "Asr" to asr,
-        "Maghrib" to maghrib,
-        "Isha" to isha,
+    val sample = TileData(
+        nextName = "Dhuhr",
+        nextTime = LocalTime.of(13, 0),
+        countdown = Duration.ofHours(1),
+        todayTimes = listOf(
+            LocalTime.of(5, 0),
+            LocalTime.of(6, 30),
+            LocalTime.of(13, 0),
+            LocalTime.of(17, 0),
+            LocalTime.of(20, 30),
+            LocalTime.of(22, 0),
+        ),
+        isKerahat = false
     )
+    tile(it, context, sample)
 }
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-
-private fun samplePrayerTimes() = PrayerTimes(
-    fajr = LocalTime.of(5, 0),
-    sunrise = LocalTime.of(6, 30),
-    dhuhr = LocalTime.of(13, 0),
-    asr = LocalTime.of(17, 0),
-    maghrib = LocalTime.of(20, 30),
-    isha = LocalTime.of(22, 0),
-)
-
-private fun nextPrayer(now: LocalTime, times: PrayerTimes): Pair<String, LocalTime> =
-    times.asList().firstOrNull { it.second.isAfter(now) } ?: times.asList().first()
-
-private fun isKerahat(now: LocalTime, times: PrayerTimes): Boolean {
-    val morningStart = times.sunrise
-    val morningEnd = times.sunrise.plusMinutes(20)
-    val eveningStart = times.maghrib.minusMinutes(20)
-    val eveningEnd = times.maghrib
-    return (now.isAfter(morningStart) && now.isBefore(morningEnd)) ||
-            (now.isAfter(eveningStart) && now.isBefore(eveningEnd))
-}
 
 private fun formatTime(time: LocalTime): String = time.format(timeFormatter)
 
